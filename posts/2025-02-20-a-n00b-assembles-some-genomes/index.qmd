@@ -3,8 +3,6 @@ title: "A n00b assembles some genomes"
 date: "2025-02-20"
 ---
 
-20th February 2025
-
 I recently had to assemble the genomes of four lines of *A. thaliana* using PacBio hifi data Sometimes it seems like the world and is dog are doing genome assemblies nowadays, but I had no experience of this, and could not find a good guide for how to go about this online. I am grateful to [Robin Burns](https://www.plantsci.cam.ac.uk/staff/dr-robin-burns) for laying out the steps for me. This post is based on what he suggested, and I have expanded on some of the things I learnt along the way.
 
 This page will give code snippets to illustrate what I'm doing. I have simplified the paths to make them easier to read, but that means they won't run out of the box. Full scripts to repeat this are on the [GitHub repo](https://github.com/ellisztamas/meth_pedigree/tree/main/03_processing/05_genome_assembly), but be aware that the repo is fluid.

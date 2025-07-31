@@ -31,8 +31,7 @@ I will just run that code again to generate some data.
 source("simulate-a-phenotype.R")
 ```
 
-Here's a reminder of what the dataframe looks like.
-There are columns giving aspects of the design, and a normally-distributed phenotype.
+Here's a reminder of what the dataframe looks like. There are columns giving aspects of the design, and a normally-distributed phenotype.
 
 ```{r}
 exp_design %>% 
