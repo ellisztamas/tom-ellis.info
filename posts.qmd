@@ -1,0 +1,9 @@
+---
+title: "Posts"
+listing:
+  contents: posts
+  sort: "date desc"
+  type: table
+---
+
+I occasionally post about things people frequently ask me about.

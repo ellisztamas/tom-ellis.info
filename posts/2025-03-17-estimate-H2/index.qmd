@@ -1,0 +1,166 @@
+---
+title: "Calculate broad-sense heritability from a common garden experiment"
+date: "2025-03-17"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library('lme4')
+suppressPackageStartupMessages(library(tidyverse))
+```
+
+I am known the the institute where I work as "that guy who always asks about heritability", to which I respond that **I always ask about heritability because it's always a good idea**.
+
+Heritability describes how much the overall variation in a trait you've measured is due to genetic differences between individuals. It's a very useful piece of information because it gives you an idea of whether there is genetic variation for that trait in the sample you're looking at. It is also fairly straightforward to calculate without any sequence data (we've been doing it for more than a century after all), as long as you plan the experiment carefully to limit confounding between genetics and environmental factors.
+
+This post will illustrate how to estimate heritability of a normally-distributed phenotype from a randomised experiment with replication of genotypes of the kind you might set up with a plant like *Arabidopsis thaliana*.
+
+## Set up the analysis
+
+In a [previous post](/posts/2025-03-08-simulate-a-phenotype/) I simulated an experiment with:
+
+-   622 lines
+-   In three cohorts
+-   Three replicates per line
+-   Pots placed in 39 trays, with 48 pots per tray.
+-   I randomised the position of the 622 lines *within replicates*
+
+I will just run that code again to generate some data.
+
+```{r, eval=TRUE}
+source("simulate-a-phenotype.R")
+```
+
+Here's a reminder of what the dataframe looks like.
+There are columns giving aspects of the design, and a normally-distributed phenotype.
+
+```{r}
+exp_design %>% 
+  select(cohort, line, replicate, tray, normal_phenotype) %>% 
+  head()
+```
+
+The obvious tool to fit variance-component models in R is the `lme4` package. Install if necessary and load as follows:
+
+```{r, eval=FALSE}
+install.packages('lme4')
+library('lme4')
+```
+
+## Visualising the variances
+
+Before fitting any models, let's plot some data to get an idea of what we're trying to model.
+
+Here is a boxplot of phenotypes for plants in each tray. Each tray has a mean, and those means vary between trays. Within each tray individual plants vary, and this within-tray variation is much greater than between-tray variation.
+
+```{r}
+boxplot(
+  normal_phenotype ~ tray, data = exp_design
+)
+```
+
+Here is a similar boxplot for phenotypes split by line. I've only plotted a random sample of 30 lines to keep it simple. You can again see that each line has a mean, and variance around that mean. However, there's a lot more spread between line means than between tray means (compare the spread of the means along the y-axis with previous plot).
+
+```{r}
+boxplot(
+  normal_phenotype ~ line,
+  data = exp_design,
+  subset = exp_design$line %in% sample(unique(exp_design$line), 30)
+)
+```
+
+## Fit variance components
+
+To estimate variance explained by different aspects of the experimental design we fit a 'random-intercepts' model. That means that for every group (i.e. every tray, every line, etc) we estimate a mean, and quantify the variance between those means. This is like calculating the variance between the means in the boxplots above, but in a way that accounts for the other aspects of the experiment at once.
+
+This code estimates the variance in `normal_phenotype` explained by replicate, tray and line.
+
+```{r}
+m1 <- lmer(
+  normal_phenotype ~ (1 | replicate) + (1 | tray) + (1 | line), 
+  data = exp_design
+)
+```
+
+The output gives us variance and standard deviations between group means for line, tray and replicate, as well as an estimate of the residual variance not explained by those things. We also get a summary of sample sizes - this is very useful to check that the model has grouped things as you expect it should have, which is frequently not the case.
+
+```{r}
+summary(m1)
+```
+
+## Extract variance and heritability
+
+Since this is a simulated experiment we know what the actual variances due to line, tray and replicate should have been:
+
+```{r}
+var(genetic_effects$genetic_effect)
+var(tray_effects$tray_effect)
+var(replicate_effects$replicate_effect)
+```
+
+If you look in the table above you'll see our estimates of these variances are pretty close to the real values, so it seems we have estimated variance components pretty well!
+
+We really want to know what *proportion* of variance is explained by each component. To do this, we extract the variance components with `VarCorr`, add them up, and divide by the sum.
+
+```{r}
+variance_components <- as.data.frame(VarCorr(m1))
+variance_components$pve <- variance_components$sdcor / sum(variance_components$sdcor)
+variance_components
+```
+
+The column `pve` shows that differences between lines, accounting for differences between replicates and tray, explains 27% of the variance in the phenotype.
+
+## Extract genetic values
+
+You can extract group means from an `lme4` model object using `ranef`. This returns a list with an element for each variable included as a random-effect in your model. For example, to get line means:
+
+```{r}
+estimated_genetic_values <- ranef(m1)$line
+head(estimated_genetic_values)
+```
+
+The format is ugly, so let's tidy it up a bit:
+
+```{r}
+estimated_genetic_values <- estimated_genetic_values %>% 
+  as_tibble() %>% 
+  mutate(
+    line = row.names(estimated_genetic_values)
+  ) %>% 
+  rename(
+    genetic_effect = `(Intercept)`
+  )
+```
+
+We can merge the datasets with real and estimated genetic values, and see how well we did. The correlation isn't perfect because the phenotypes are simulated with error, but they are positively correlated.
+
+```{r}
+inner_join(
+  genetic_effects, estimated_genetic_values,
+  by = "line",
+  suffix = c("_real", "_estimated")
+) %>% 
+  ggplot(aes(x = genetic_effect_real, y=genetic_effect_estimated)) +
+  geom_point()
+```
+
+Recall that the variances are estimated well, even if individual phenotypes are noisy. That's because the variance is estimated using \>600 line means, but individual means are estimated from only have three replicate plants.
+
+## Why do we need a model?
+
+We started by looking at means on a boxplot. What if we had just estimated the variances between those means without fitting a horrid model? Taking the example of line means, we can see that this would *overestimate* the true mean by more than two-fold.
+
+```{r}
+exp_design %>%
+  group_by(line) %>%
+  summarise(
+    mean = mean(normal_phenotype)
+  ) %>%
+  pull(mean) %>%
+  var()
+```
+
+There are two reasons for this:
+
+1.  When you fit a random-intercepts model, the group means are estimated as coming from a normal distribution with a finite variance. In practice that means that more extreme means tend to be pulled towards the mean.
+2.  Second, using raw means doesn't account for variances between trays and between replicates, so these factors end up inflating the apparent variance between lines. This is why it is a really good idea to take the time to think through experimental design to identify and eliminate confounding factors as much as possible before starting an experiment.

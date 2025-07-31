@@ -1,0 +1,37 @@
+---
+title: "Linkage disequilibrium is like speaking with an accent"
+date: "2025-02-12"
+---
+
+12th February 2025
+
+I do a lot of work involving the genetics of natural populations. Natural populations are messy because genetics, environment and traits are confounded in complicated way that can make it challening to distinguish real biological signal from confounding.
+
+One source of confounding that comes up again and again is what's called *linkage disequilibrium* (LD) between genetic markers. However, I frequently find that this idea is not intuitive for my colleagues to grasp, and in fact many people *really hate* the term itself. In this post I want to illustrate the concept of LD by analogy to something that is more familiar to many people: speaking with an accent.
+
+My aim here is only to build an intuition explanation of what LD is and where it comes from, and not to go into the details of how it is calculated or used in practice. For more on the issues as they relate to GWAS, I recommend looking at [Veller & Coop's paper](https://doi.org/10.1371/journal.pbio.3002511) that lays out the ways LD can arise and cause confounding in GWAS in articulate, if depressing, detail.
+
+## An accent means your speech is correlated
+
+There is a good chance that in whatever your mother tongue is, people in different places speak with different accents. For example, in English:
+
+-   Americans would say diaper, while British people say nappy.
+-   Americans would say faucet, while British people say tap.
+-   Americans would say cookie, while British people say biscuit.
+-   Americans would say "medical bills are the leading cause of personal bankruptcy", while British people would be dumbstruck to hear that, if we're being honest.
+
+None of those things have anything in common - one is food, one is a household item, and one is a piece of clothing. Nevertheless, if you hear someone say 'cookie', you would expect that they would also say 'faucet' and 'diaper'. This is because the words are correlated with each other - they are inherited together more often than expected by chance.
+
+The reason for this will be intuitive to you. We acquire language by exchanging words with those around us. If you're surrounding by people who call a tap a faucet and a biscuit a cooke, you will probably do the same. That means that word choices tend to become correlated with one another, as well as with other things like where you grew up, or what your parents do for a living.
+
+## LD means your alleles are correlated
+
+In genetics, we can think of alleles at different loci as being like words in a language. You also inherit alleles from your parents in an even more direct way than you inherit language. Organisms, including your parents, tend to mate with partners that are nearby, so you are likely to inherit the alleles that are common in your parents' population. This is true for loci across the genome, so alleles at different loci are often inherited together more often than expected by chance, even if they are different chromosomes.
+
+This is just like word choices - correlations between unrelated things can arise because they are inherited together from the same source.
+
+## Vocabulary predicts behaviour
+
+Now imagine that you had collected information on the words that people use, and also on their behaviour. I would be prepared to bet decent money that you would find a very strongly significant association between whether people say cookie or tap and, for example, and how much tea they drink or how many guns they own (they challenge would be how many Canadians were included in the study, who don't obviously fit the lazy stereotypes I am alluding to). There is obviously no causal relationship between these things, but they are correlated because they are confounded with where people come from.
+
+This is why LD is a challenge in genetics. Even in the absence of environmental correlations, LD between markers makes it hard to distinguish which genetic variants are actually associated with a trait, and which are just confounded with those variants. Ignoring this issue can lead to some very dubious conclusions.
