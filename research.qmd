@@ -2,6 +2,35 @@
 title: "Research"
 ---
 
+## Experimental manipulation of linkage disequilibrium
+
+The process of 'mapping' genes relies on an association between the frequency of 
+alleles at causative loci and the traits of interest.
+Unfortunately, those alleles tend to also be correlated with other alleles across the genome for a variety of very real biological reasons, and are said to be in 'linkage disequliibrium' with one another.
+This makes it hard to get meaningful signal about the genes underlying traits of interest.
+Natural ecotypes of *Arabidopsis thaliana* from Sweden are a prime example of this - the plants show variation for interesting traits relatived to survival and reproduction, but this is strongly correleated with where they come from, so it is difficult to say what matters and what does not.
+Typically, researchers use some kind of statistical correction to adjust for these correlations, but when confounding is very strong these tend to over-correct and obscure true signals.
+
+Rather than adjust statistically, in this project we are attempting to disrupt linkage disequilibrium experimentally.
+We induce one round of random mating between 217 accessions from Sweden by hand pollination, followed by single-seed descent, to generate a mapping panel that maintains natural allele frequencies but with much reduced linkage disequilbrium.
+We are using this to investigate the performance of association statistics, and identify non-additive allelic effects.
+
+## Methylation variation in *Arabidopsis thaliana*
+
+Nucleotides, especially cytosines, can be methylated by adding a methyl group (CH~3~). Ecotypes of *Arabidopsis thaliana* from across Europe show remarkable variation in cytosine methylation, and this variation is correlated with climate of origin and transposable element load, but the meaning of this variation is not clear. My current work focusses is part of a broader effort to understand the biology of these observations. In particular, my projects focus on growing plants under field conditions. This is in contrast to most previous work which has investigated methylation variation in controlled growth chambers, which can never capture the full range of environmental cues that might affect the regulation of methylation marks.
+
+## Local adaptation in *Arabidopsis thaliana*
+
+Local adaptation is the process by which populations respond to the selection pressures in their local environment over time. Among the best ways to investigate this is to use reciprocal transplant experiments, where individuals from two or more locations are reared in common gardens at each site. As a postdoc with Jon Ågren at Uppsala university in Sweden I was involved in setting up and analysising large scale reciprocal transplants using ecotypes of *Arabidopsis thaliana* originating in Sweden and Italy to examine the prevalent selection pressures at each site, which aspects of plant phenotype they act on, and to identify the regions of the genomes that respond to that selection. A particular strength of this project is that experiments have been carried out for more than a decade, which means we can investigate how consistent these effects are between years, and try and identify selection events which occur only rarely but have major impacts on survival and fecundity.
+
+A particular focus has been on interactions between plants an microbes.
+In collaboration with Stepháne Hacquard's group at MPI Cologne we found that both the abiotic and biotic aspects of soils where *A. thaliana* grows [vary enormously across Europe]((/assets/pdfs/2019_thiergart.pdf)), but that their weedy lifestyle means that plants seem to be robust to variation in both [microbiome](/assets/pdfs/2022_duran_etal.pdf) and [soil type](https://royalsocietypublishing.org/doi/epdf/10.1098/rsbl.2024.0236).
+
+As an offshoot of this, I got frustrated by existing methods to investigate pleiotropy (when one gene affects multiple traits).
+Usual approaches (including [my own](/assets/pdfs/2021_fecundity_components.pdf) previous work) rely on null-hypothesis tests to count the number of traits involved, but this is a blunt tool that underestimates the extent of pleiotropy.
+Instead, it's better to quantify the strength and direction of pleiotropic effects.
+I developed an R package [sintillate](https://github.com/ellisztamas/sintillate) to do this.
+
 ## Flower colour in a snapdragon hybrid zone
 
 Natural hybrid zones occur where partially diverged populations come into contact and interbreed. This means that new combinations of genes from each population which are continuously being combined in new hybrids, and tested by natural selection. This makes them fascinating 'evolutionary laboratories' for observing natural selection in real time.
@@ -14,14 +43,6 @@ During my PhD with Nick Barton and David Field at IST Austria, I studied a hybri
 4.  I [extended FAPS](https://doi.org/10.1101/2024.01.05.574354) to incorporate additional covariates, and used that to jointly infer the pedigree and the distribution of pollen disersal distances.
 
 My full thesis can be found [here](https://research-explorer.app.ist.ac.at/download/1398/5106/IST-2016-526-v1%2B1_Ellis_signed_thesis.pdf).
-
-## Local adaptation in *Arabidopsis thaliana*
-
-Local adaptation is the process by which populations respond to the selection pressures in their local environment over time. Among the best ways to investigate this is to use reciprocal transplant experiments, where individuals from two or more locations are reared in common gardens at each site. As a postdoc with Jon Ågren at Uppsala university in Sweden I was involved in setting up and analysising large scale reciprocal transplants using ecotypes of *Arabidopsis thaliana* originating in Sweden and Italy to examine the prevalent selection pressures at each site, which aspects of plant phenotype they act on, and to identify the regions of the genomes that respond to that selection. A particular strength of this project is that experiments have been carried out for more than a decade, which means we can investigate how consistent these effects are between years, and try and identify selection events which occur only rarely but have major impacts on survival and fecundity.
-
-## Methylation variation in *Arabidopsis thaliana*
-
-Nucleotides, especially cytosines, can be methylated by adding a methyl group (CH~3~). Ecotypes of *Arabidopsis thaliana* from across Europe show remarkable variation in cytosine methylation, and this variation is correlated with climate of origin and transposable element load, but the meaning of this variation is not clear. My current work focusses is part of a broader effort to understand the biology of these observations. In particular, my projects focus on growing plants under field conditions. This is in contrast to most previous work which has investigated methylation variation in controlled growth chambers, which can never capture the full range of environmental cues that might affect the regulation of methylation marks.
 
 ## Scientific publications
 
