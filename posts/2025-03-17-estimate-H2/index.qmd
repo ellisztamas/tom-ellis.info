@@ -28,7 +28,7 @@ In a [previous post](/posts/2025-03-08-simulate-a-phenotype/) I simulated an exp
 I will just run that code again to generate some data.
 
 ```{r, eval=TRUE}
-source("simulate-a-phenotype.R")
+source("https://raw.githubusercontent.com/ellisztamas/tom-ellis.info/refs/heads/main/posts/2025-03-08-simulate-a-phenotype/simulate-a-phenotype.R")
 ```
 
 Here's a reminder of what the dataframe looks like. There are columns giving aspects of the design, and a normally-distributed phenotype.
@@ -68,7 +68,7 @@ boxplot(
 )
 ```
 
-## Fit variance components
+## Fit variance components {##fit-variance-components}
 
 To estimate variance explained by different aspects of the experimental design we fit a 'random-intercepts' model. That means that for every group (i.e. every tray, every line, etc) we estimate a mean, and quantify the variance between those means. This is like calculating the variance between the means in the boxplots above, but in a way that accounts for the other aspects of the experiment at once.
 

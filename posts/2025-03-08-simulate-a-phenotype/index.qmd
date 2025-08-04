@@ -15,7 +15,9 @@ There are some very good reasons for doing this:
 
 -   This is a good way to see how an experiment actually comes together.
 -   This is a good way to understand what you are doing because you can't write the simulation unless you know what the structure is. (In fact, in writing this post I realised I had overlooked something in my real analysis, which goes to show that this works!)
--   I want to use this example to illustrate some downstream analyses in future posts, and using simulations mean that we will check we got the correct answer.
+-   I want to use this example to illustrate some downstream analyses in future posts, and using simulations mean that we will check we got the correct answer. (Update: see the posts on estimating heritability for [normally-distributed traits](/posts/2025-03-17-estimate-H2/) and traits that are [integer counts](posts/2025-04-02-H2-count-data/)).
+
+You will find a single script to run the code below [here](https://raw.githubusercontent.com/ellisztamas/tom-ellis.info/refs/heads/main/posts/2025-03-08-simulate-a-phenotype/simulate-a-phenotype.R).
 
 ## A concrete experimental example
 

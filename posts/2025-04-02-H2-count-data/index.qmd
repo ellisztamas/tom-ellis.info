@@ -1,0 +1,212 @@
+---
+title: "Broad-sense heritability for count data"
+date: "2025-04-02"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library('lme4')
+suppressPackageStartupMessages(library(tidyverse))
+```
+
+In previous posts I [simulated a phenotyping data set](/posts/2025-03-08-simulate-a-phenotype/), and then calculated [variance components and heritability](/posts/2025-03-17-estimate-H2/) for a normally-distributed using a mixed linear model.
+However, **many interesting phenotypes are not normally distributed**.
+For example, some variables are binary outcomes (e.g. surival to reproduction), an integer count (e.g. offspring number).
+Modelling non-normal traits is a bit more complicated than standard linear models, but not doing this is a really easy way to get a wildly incorrect estimate of heritability.
+
+In this post my goal is to demonstrate how you can estimate broad-sense heritability when your trait is measured as integer counts.
+This is largely based on an excellent paper by [Pierre de Villemereuil and colleagues](https://doi.org/10.1534/genetics.115.186536) (it's also worth looking at the [vignette](https://cran.r-project.org/web/packages/QGglmm/vignettes/QGglmmHowTo.pdf) for the accompanying package, `QGglmm`, which is also accessible and informative).
+In that paper they start with observed count data and work backwards to infer quantiative genetic parameters.
+In this post I take those parameters as known, because I simulated them, and work forward to generate count data you might measure, and then check how well the inference works.
+
+## Why do we need to worry about count data?
+
+There are two reasons why we should we wary of using classical linear models when the data are really integer counts. To illustrate this, compare the first two plots below.
+
+```{r}
+par(mfrow=c(1,3))
+hist( rnorm(n=1000, mean=1, sd=1), main = "Gaussian data")
+hist( rpois(n=1000, lambda = 1),   main = "Count data (mean=1)")
+hist( rpois(n=1000, lambda = 30),  main = "Count data (mean=30)")
+```
+
+The first shows a histogram of normally distributed data, with a mean of 1. You can see that the data are symmetrical around the mean, are continuous, and extend below zero. Classical statistics assume the data behave like this plot.
+
+In the second plot you see count data, again with a mean of 1. The data can only take on integer values, and are constrained to be positive, so you can see that values are bunched up as they approach zero. Linear models are really just working out how much changing some variable changes your phenotype, and adds those changes up. That can't work when data are bounded in some way, because you can easily generate predictions that counts should be negative.
+
+It's worth noting that count data are most difficult to work with when the mean is close to zero, because of the constraint that counts have to be positive. If the mean is much higher than zero, this becomes less of an issue. For example, the third plot above shows count data with a mean of 30. You can see that the data are pretty symmetrical, and because the data can take on more values (integers between about 15 and 50) they are *somewhat more* continuous than when the mean was one. In these cases it may be acceptable to treat these data as if they were normally distributed, with caution.
+
+## A scale we can work on
+
+If the issue with count data is that variances change depending on the mean, perhaps we can make our lives easier by transforming the data to a scale where variances are stable, and do our inferences there? Generalised linear models aim to do just this by identifying an appropriate transformation (called the **link function**) that makes the data behave as if they were normally distributed. For count data, this usually means that we assume the data are Poisson distributed rather than normally distributed, apply a log transformation to the data, and estimate things like genotype means on the log-scale.
+
+We can think of data behaving on two scales:
+
+-   The **scale of the data**. This is what you can measure, and it usually has an intuitive meaning, such as number of leaves. There is one value for every individual you measured. However, the data are bounded so you can't easily add effects up, so the data are hard to work with directly.
+-   The **latent scale**. This is the scale after transforming the data. You expect one value for every group in your analysis (for example, mean (log) number of leaves for a single cultivar). On this scale there are no bounds and variances are stable, so we can add things up and statistical inference works well. However, it's biological meaning isn't intuitive.
+
+In their [excellent paper](https://doi.org/10.1534/genetics.115.186536) on the topic, de Villemereuil and colleagues argue that we are interested in heritability we should also think about a third level between the two above, which they call the **"expected data scale"**. This is the mean of the individual values on the data scale, such as mean leaf number per cultivar. It differs from the data scale in that it does not have to take on integer values as individual data values do in this case.
+
+It is useful to think of the data on these three scales as being equally valid, but with their own trade-offs in interpretation and ease of doing inference. The de Villemereuil paper illustrates how we can move between these scales for a more informed understanding of the traits we are interested in.
+
+## Data scales in simulated data
+
+To illustrate the connections between these data scales, let's modify the previous simulation code to generate normally distributed phenotypes to instead generate count data.
+
+The [simulation code](/posts/2025-03-08-simulate-a-phenotype/) generates (normally distributed) mean values for each genotype, each replicate and each tray the plants were grown in. Let's start by repeating that simulation:
+
+```{r import-sim, eval=TRUE}
+source("https://raw.githubusercontent.com/ellisztamas/tom-ellis.info/refs/heads/main/posts/2025-03-08-simulate-a-phenotype/simulate-a-phenotype.R")
+```
+
+The phenotype of any single plant depends on the value for each of those groups it belongs to. To generate a normally distributed phenotype, we just sum those values, and add a 'residual error' drawn from a normal distribution. This works because the group values are on the same scale as the data we wish to simulate, so we can add things up.
+
+Now we want to add a Poisson-distributed phenotype, where each individual has a trait which is an integer count. To do this, we again start by adding up the group means, without the residual error. This is the individual's phenotype on the latent scale. Let's do that and check things are nicely normally distributed:
+
+```{r latent-vals}
+exp_design <- exp_design %>%
+  mutate(
+    latent_values = cohort_effect + replicate_effect + genetic_effect + tray_effect,
+  )
+
+exp_design %>%
+  ggplot(aes(x = latent_values)) +
+  geom_histogram()
+```
+
+When raw data are counts, we usually transform them to the latent scale by taking the log of the counts. In this exercise we are going in the opposite direction from the latent to the expected and data scales, so we need the *inverse* of the log function, which is the exponential function. Compare the histogram of expected values to the one for the expected values - you can see that they are not normal any more. However, they are also not integer counts, because the numbers have decimal points.
+
+```{r exp-vals}
+exp_design <- exp_design %>%
+  mutate(
+    expected_values = exp(latent_values)
+  )
+
+exp_design %>%
+  ggplot(aes(x = expected_values)) +
+  geom_histogram()
+```
+
+To get proper integer counts we draw from a Poisson distribution with mean equal to the expected value for each plant. This is analogous to drawing residual errors for the normally-distributed phenotype, but from a different distribution. Now we really have integer count data.
+
+```{r data-vals}
+exp_design <- exp_design %>%
+  mutate(
+    poisson_phenotype = rpois(n=nrow(exp_design), lambda = expected_values)
+  )
+
+exp_design %>%
+  ggplot(aes(x = poisson_phenotype)) +
+  geom_histogram()
+```
+
+To review those steps:
+
+1.  We summed over the group means on the latent scale.
+2.  We (back)transformed those values to the expected scale.
+3.  We generated an integer value for each plant based on the expected-scale values.
+
+In contrast, for the normally distributed phenotype we just summed group means and residual errors. The group means were on the same scale as the residual errors, so there was no need for a transformation.
+
+## Estimate the variance components
+
+In the previous section we started with values on the latent scale and used them to generate count data on the data scale. Here we go the other way, and use the count data to try and recover the underlying group means on the latent scale.
+
+To analyse a [normally distributed trait](/posts/2025-03-17-estimate-H2/) we used the package `lme4` and fitted random intercepts for the effects of replicate, tray and line as follows:
+
+```{r, eval=FALSE}
+library(lme4)
+lmer(
+  normal_phenotype ~ (1 | replicate) + (1 | tray) + (1 | line), 
+  data = exp_design
+)
+```
+
+Fitting a model for count data is similar, except that we change the function call from `lmer` to `glmer`, and specify that the residual errors are from the Poisson family. This applies a log link function to the data, and returns variance components on the latent scale (the log scale in this case).
+
+```{r poisson-model}
+poisson_model <- glmer(
+  poisson_phenotype ~ (1 | replicate) + (1 | tray) + (1 | line),
+  data = exp_design,
+  family ='poisson'
+  )
+
+summary(poisson_model)
+```
+
+Since this is a simulated experiment we know what the actual variances due to line, tray and replicate should have been:
+
+```{r}
+var(genetic_effects$genetic_effect)
+var(tray_effects$tray_effect)
+var(replicate_effects$replicate_effect)
+```
+
+If you compare those values with the output of `summary(poisson_model)` you'll see that the estimated values are very close to the true values. (In fact they are all slightly lower than the true values; this is because the model is doing something called shrinkage, and is a good thing, but beyond the scope of this post...).
+
+You'll also notice that the model returns and error `boundary (singular) fit: see help('isSingular')`. This means that one of the various components is so close to zero that the model cannot estimate it. In this case, the variance between trays has been estimated as zero. That's fine - the variance between trays really *is* very small, so this error is nothing to worry about.
+
+## Heritability on the latent and data scales
+
+We can calculate heritability on the latent scale by dividing the variance explained by differences between lines by the variance explained by all variance components.
+
+```{r}
+variance_components <- as.data.frame(VarCorr(poisson_model))
+variance_components$pve <- variance_components$sdcor / sum(variance_components$sdcor)
+variance_components
+```
+
+The code is identical to the code to do the same thing for the normally distributed phenotype.
+However, there is a crucial difference in that the Poisson model does not give you a variance term for the residuals.
+That means that even though the variance terms themselves are pretty close to the true values for both the normal and count data, the estimate of heritability seems to be much higher for the count data (67% vs 27%).
+That's because the residual errors are define only on the scale of the data, and these estimates are on the latent scale.
+
+To get the heritability on the scale of the data we need to transform the values back to the data scale and incorporate the errors due to Poisson variation.
+The error term is more complicated than you might expect because there is no simple error term we can just add on, like we did for the normally-distributed variable.
+Instead, the Poisson errors have a closed form that depends on the mean.
+
+Fortunately for us, de Villemereuil and colleagues have done the hard work for us with their excellent `QGglmm` package for R.
+To use it we need to pass values for the mean, overall phenotypic variance and genetic variance on the latent scale.
+The function `QGparams` returns those estimates plus the estimate of heritability on the data scale.
+
+```{r h2-data-scale}
+library("QGglmm")
+
+variance_components <- as_tibble(VarCorr(poisson_model))
+
+model_mean <- fixef(poisson_model)
+genetic_variance <- variance_components$vcov[1]
+phenotypic_variance <- sum(variance_components$vcov)
+
+QGparams(
+      mu = model_mean,
+      var.p = phenotypic_variance,
+      var.a = genetic_variance,
+      model = 'Poisson.log', # Specify that we think errors are Poisson distributed
+      verbose = FALSE
+    )
+```
+
+You can see that the estimates of heritability have dropped from 0.67 on the latent scale to 0.17 on the data scale.
+That's quite a big difference!
+The difference arise because in this case because the variance of a Poisson variable increases with the mean.
+In this case the mean count is close to zero, so variances are constrained to be small.
+Just for fun we can artificially increase the mean by ten to see what happens - suddenly heritability is really high again!
+
+```{r}
+QGparams(
+      mu = model_mean+10,
+      var.p = phenotypic_variance,
+      var.a = genetic_variance,
+      model = 'Poisson.log', # Specify that we think errors are Poisson distributed
+      verbose = FALSE
+    )
+```
+
+Given the potential for big discrepancies between heritabilities on the latent and data scales, which should you report?
+My opinion is that they are both useful.
+Estimates on the data scale look messier, but probably make more biological sense.
+For example, if you want to use the heritability estimate to predict the phenotype of a plant you haven't seen yet, then its the data scale that counts.
+On the other hand, estimates on the latent scale make less biological sense, but still indicate that there is genetic variation to be investigated.
+For example, I would use genetic values on the latent scale If I wanted to run a genome-wide association study for the trait, because this is more likely to identify associated variants, and the heritability estimate on the latent scale tells me whether I am likely to find anything.
+Perhaps the best thing is just to **be aware** that the data exist on different scales, and that heritability may vary enormous between them.
