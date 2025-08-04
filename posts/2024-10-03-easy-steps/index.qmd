@@ -1,0 +1,162 @@
+---
+title: "Easy steps to a more manageable analysis project"
+date: "2024-10-03"
+---
+
+I don't think I've ever done an analysis that went to the way I expected it to.
+Doing science is the process of addressing questions we don't know the answer to,
+so we should always expect projects to involved things that don't work, recognise
+that that is normal, and have a way to keep track of these results.
+
+Despite this, I remain astonished that students of the life sciences typically
+receive no training about good practices in data management or analyses.
+We typically work this stuff out on our own, after the fact, and learn mistakes the hard way.
+
+There have been efforts to improve things.
+You somewhat often see guides along the lines of [Best Practices for Scientific Computing](https://doi.org/10.1371/journal.pbio.1001745) highlighting specific
+tools for better project management, mostly drawn from software design, and all
+of which are a good idea in my opinion.
+However, the same authors recognise that those tools often come with a steep 
+learning curve, and came back a few years later with [Good enough practices in scientific computing]( https://doi.org/10.1371/journal.pcbi.1005510) that 
+makes suggestions for where to start.
+
+In this post I'd like to highlight some additional suggestions I have
+for more manageable data-analysis projects.
+The goal is to work in a way that means you will be able to come back to what
+you have done in months or years and quickly get up to speed about what you are
+thinking today.
+These suggestions are concrete, and require no learning curve whatsoever, and 
+everybody reading this could implement them today with no additional training.
+
+## Use a purposeful directory structure
+
+The simplest thing you can do to make your analysis life easier is to start with 
+a template directory structure that will allow you to try things out, make 
+mistakes, and still know where to find things.
+
+I have a specific directory structure that I use for day-to-day work for all my
+analysis projects.
+It looks like this:
+```
+01_data
+02_library
+03_data_processing
+04_results
+05_reports
+06_presentations
+07_manuscrpt
+```
+Things are ordered in the order I would really do them- I collect data, then process it, then I get results, then present it as reports and presentations, and writing a manuscript comes last.
+See [here](/posts/2023-01-19-folder-structure/) for a more detailed description of what goes where.
+
+I think the structure I use is flexible enough to work for any project, but what do I know.
+At the very least, it is much better to start with *some kind of purposeful directory structure* than none at all.
+
+## Write an informative `README` file
+
+A `README` file is the first place someone will look to work out what the project
+is about, and how they should navigate it.
+If nothing else, if they can find the answer there, they are less likely to 
+email you to ask you directly.
+
+Do your future self a favour and [write a good `README`](/posts/2023-09-21-readme-files/) file today.
+
+## Number things
+
+This is subtle but powerful.
+It's really helpful to start directory and filenames with a two digit number
+indicating the order they require your attention.
+
+For example, imagine you had some raw Illumina sequencing data, and you wanted
+to trim adapaters from those reads, then align to a reference genome, then call
+SNP genoptypes from them.
+Starting script names with numbers ensure they appear on your computer in the
+order they should be executed.
+```
+01_trim_reads.sh
+02_align_reads.sh
+03_call_SNPs.sh
+```
+
+Without the numbers, they appear alphabetically, and the first task appears last.
+```
+align_reads.sh
+call_SNPs.sh
+trim_reads.sh
+```
+This is not a huge deal when there are only three items to number, but this can 
+get complicated when you have not many more than this.
+
+I know some people like to order things by date by starting names with something
+like `241003` for 3rd October 2024.
+There's a case for that, but personally I don't like it.
+First, my brain does not like all the characters.
+Second, I don't see the date as being the defining characteristic of the script.
+They may be things I come back to at a later date, but even making edits to any 
+of those scripts doesn't change the order they *need* to go in.
+
+## Keep code and output together
+
+I have previously sometimes used a structure where I had scripts to do analyses
+in one directory called something like `analysis`, and had those scripts output
+to another directory called `output`.
+Because I tried many analyses, I ended up with many scripts and many output 
+files, all with fairly similar names.
+Then, years later, a collaborator asked for a specific data file, and it was a
+nightmare trying to work out which output file was from which script.
+
+There's an easy solution to the problem: keep the output of the code close to
+code itself.
+I do this by including a directory `output` in the same directory where the code
+is.
+Extending the previous example:
+```
+output
+01_trim_reads.sh
+02_align_reads.sh
+03_call_SNPs.sh
+```
+It is usually straightforward to work out what has come from where.
+This won't work if you have *loads* of scripts, but in that case it is sensible
+to split up the scripts into separate directories anyway.
+
+There's an extension to this idea is to have an additional subdirectory `logs`.
+This that recognises that log files are useful things to keep, but aren't really
+the same thing as code output.
+I work a lot with a SLURM job scheduler, so I usually have a subdirectory called
+`slurm` next to `output` where I keep error and output logs from SLURM.
+I make sure they have the same name as the script that generated them so I can
+easily work out where they came from.
+
+
+## `bash` scripts for humans
+
+Like doing the washing up or taking a train in Britain, using bash is often unavoidable but tedious.
+[Writing a bash script you or someone else will understand in the future](/posts/2024-06-15-bash-scripts-for-humans/) can alleviate the latter, if not the former.
+
+
+## Keep track of results sections
+
+I tend to generate a lot of results, most of which either turn up dead ends or
+spur new results.
+I want to keep track of the successes and the failures, and be able to tell what
+I did far into the future.
+To do this, I've started documenting my results with [result-summary files](/posts/2022-10-21-results_summaries/).
+
+
+## Start today!
+
+There's nothing technical about any of the suggestions in this post, so there is
+no learning curve to implementing them as soon as possible.
+Indeed, they will be more useful the earlier you start using them.
+
+That said, it is much easier to start with a solid template than to retrofit an
+existing project later on.
+In particular, the second worst thing you could do (after not doing anything at
+all) is to tell yourself *"I will tidy my project up when I come to publish/graduate/etc"*.
+
+Don't kid yourself: you will not do this. Start now.
+
+
+
+

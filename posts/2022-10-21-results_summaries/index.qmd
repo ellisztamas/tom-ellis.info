@@ -1,0 +1,63 @@
+---
+title: "Keeping track of results"
+date: "2022-10-21"
+---
+
+A lot of the research I have done could be described as "exploratory", where there is no specific hypothesis being tested but we expected to find something interesting (a more cynical observer might describe this as a "fishing expedition").
+That means generating lots of results, but expecting most to either not show anything interesting, or to demand refinement or raise additional questions.
+However, I do want to keep track of the things that 'haven't worked'.
+
+My approach to this is to try and conceptually divide questions into individual, bite-sized results, and ensure I have a dedicated results subfolder inside my main results directory.
+I order results chronologically.
+Inside each result subdirectory I have a file called `result_summary.md` where I summarise what I did and what I found.
+The goal is that this should be really fast to parse.
+
+Below is an example results summary file.
+You can find examples from real projects [here](https://github.com/ellisztamas/2022_bisulphite_protocol/tree/main/05_results) or [here](https://github.com/ellisztamas/1001crosses/tree/main/05_results).
+
+```markdown
+# Plot the decay in LD over short distances
+
+**Date:** 5th May 2022
+**Author:** Tom Ellis
+
+## Background
+
+Linkage disequlibrium after one round of random mating ought
+to be half that of parents.
+Compare the decay of LD over short distances.
+
+## What did you do?
+
+- `01_get_LD.sh` calculates LD in plink.
+- `02_plot_LD.R` plots the results
+
+## Main conclusion
+
+LD starts lower and decays faster in the progeny than in the
+parents.
+At distances of 100kb LD levels out at about
+    r2=0.07 in the parents
+    r2=0.05 in the progeny
+So there is less of a difference than one would expect.
+
+## Caveats
+
+LD is lower than the parents even within 100bp.
+I suspect something has gone wrong with the imputation.
+
+## Follow-up
+
+- Compare this with the non-imputed data.
+- Calculate LD as the D statistic instead of r2
+```
+
+There are five sections:
+
+1. **Background**: What is the question, and how does this relate to previous results?
+2. **What did you do?**: A summary of the scripts used to get the results. This can be brief, because the scripts themselves should contain more detail.
+3. **Main conclusion**: A high-level summary of the result.
+4. **Caveats**: Are there any caveats to be aware of about the data, code or results?
+5. **Follow-up**: Do the current results raise any additional questions?
+
+In particular, the caveats and follow-up sections are good to write at the time you do the work, because you will most likely forget this, and future-you will thank you.

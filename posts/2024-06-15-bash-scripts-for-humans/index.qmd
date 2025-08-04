@@ -1,0 +1,201 @@
+---
+title: "Less frustrating bash scripts"
+date: "2024-06-15"
+---
+
+Bash is often the glue used to join together scripts and programs.
+It's essential, and powerful.
+However, I'd be hard pressed to describe it as elegant or especially easy for a
+human to parse.
+
+It's really easy to make bash scripts that are difficult to understand,
+especially for someone else.
+I've come to appreciate this from trying to implement colleagues scripts,
+getting frustrated, and realising mine were no better.
+
+In this post I outline some suggestions for how to structure bash scripts so a
+human can follow, use and debug them.
+
+## A raw bash script
+
+To start with, here is a basic script to a stage of data analysis.
+It uses a stand-alone program to clean up some DNA sequencing reads and create
+some quality-control plots to assess how well it worked.
+Specifically, it takes an array of BAM files, passes them one at a time to the
+program `trim_galore`, then runs `multiqc` after the last job is complete.
+This is done as a job array on a SLURM high-performance computing system. 
+
+```bash
+#!/usr/bin/env bash
+
+# SLURM
+#SBATCH --mem=20GB
+#SBATCH --job-name=trim_reads
+#SBATCH --output=slurm/%x-%a.out
+#SBATCH --error=slurm/%x-%a.err
+#SBATCH --qos=short
+#SBATCH --time=4:00:00
+#SBATCH --array=0-812
+
+module load build-env/f2022
+module load trim_galore/0.6.10-gcccore-12.2.0
+
+# Data
+read_array=(/home/tj495/projA/match/GBS/01_unzipped_fastq/**/demultiplexed/**/*_R1_*.fastq.gz)
+read_pair_1=${read_array[$SLURM_ARRAY_TASK_ID]}
+read_pair_2=${read_pair_1/_R1_/_R2_}
+
+args="--outdir my/long/difficult/path/for/fastq/"
+trimmed=/home/tj495/projA/match/GBS/02_trimmed_fastq
+trim_galore --paired --nextera --quality 20 --length 20 --clip_R1 15 --clip_R2 15 --fastqc --trim-n --fastqc_args $args --output_dir $trimmed $read_pair_1 $read_pair_2
+
+if [ $SLURM_ARRAY_TASK_ID -eq 812 ]
+then
+    multiqc \
+        -outdir 03_processing/02_original_sample_sheet/output/multiqc/multiqc_after_trimming.html 
+        my/long/difficult/path/for/fastq/
+fi
+```
+
+It gets the job done, but it isn't pretty.
+I can remember looking at scripts like this while I was learning bash scripting
+and being very puzzled at what was going on.
+
+## A cleaner bash script
+
+Here is a modified version of the script, which I think is much cleaner.
+First the whole script, then we'll go through it.
+
+```bash
+#!/usr/bin/env bash
+
+# Trim adaptors adapters from raw fastq files and run fastqc
+# on the output.
+# After the last job, this also attempts to run multiqc on
+# the aggregate output.
+#
+# Tom Ellis, 24th November 2023
+
+# SLURM
+#SBATCH --mem=20GB
+#SBATCH --job-name=trim_reads
+#SBATCH --output=slurm/%x-%a.out
+#SBATCH --error=slurm/%x-%a.err
+#SBATCH --qos=short
+#SBATCH --time=4:00:00
+#SBATCH --array=0-812
+
+module load build-env/f2022
+module load trim_galore/0.6.10-gcccore-12.2.0
+
+
+# === Input === 
+
+# Where the unzipped bam files are
+indir=/path/to/raw/data
+
+
+# === Output ===
+
+# Output file for trimmed files
+outdir=/path/to/output/02_trimmed_fastq
+mkdir -p $outdir
+# Output directory for fastqc results on the trimmed files
+qcdir=$outdir/qc
+mkdir -p $qcdir
+# Output directory to save the multiqc report
+multiqc_dir=03_processing/02_original_sample_sheet/output/multiqc/
+
+
+# === Main === 
+
+# Prepare file names
+# Identify read pairs for matching fastq files (R1 and R2; I1 and I2 contain the barcodes)
+read_array=($indir/**/demultiplexed/**/*_R1_*.fastq.gz)
+read_pair_1=${read_array[$SLURM_ARRAY_TASK_ID]}
+read_pair_2=${read_pair_1/_R1_/_R2_}
+
+# Trim Galore!
+trim_galore \
+    --paired \
+    --nextera \
+    --quality 20 \
+    --length 20 \
+    --clip_R1 15 --clip_R2 15 \
+    --fastqc \
+    --trim-n \
+    --fastqc_args "--outdir ${qcdir}" \
+    --output_dir ${outdir} \
+    $read_pair_1 $read_pair_2
+```
+
+## Use an informative header
+
+The script starts with a short outline of what the script does at a high level.
+The aim is that a reader who does not know the code base should be able to read
+the header and determine whether this is the script they are looking for right
+now, quickly, without having to go through the code.
+
+It also gives a name and date.
+This has proven to be more useful than I would have expected.
+
+```bash
+# Trim adaptors adapters from raw fastq files and run fastqc
+# on the output.
+# After the last job, this also attempts to run multiqc on
+# the aggregate output.
+#
+# Tom Ellis, 24th November 2023
+```
+
+## Separate inputs and outputs from code
+
+Aside from the header, and the lines starting with `SBATCH`, there are now three
+obvious sections `Inputs`, `Outputs` and `Main`.
+
+The first two clearly define what input files are and what files are going to be
+created by the script.
+All these sections do is define paths to files, and sometimes set additional
+variables.
+That means the user can see what files are need to run the script, and what 
+should be expected as an output - in the previous script this was merely
+implicit, and would have taken some work to work out.
+
+The `Main` section is where commands are actually executed.
+The commands call the paths defined as inputs and outputs as bash variables,
+meaning that definitions and execution are separate.
+In practice, that means you can fiddle with either the paths or the code without breaking the other.
+
+There is also an extra line of whitespace between the sections, because human brains like to separate ideas with space.
+
+## Annotation
+
+The new script has some basic code comments telling you what is going on.
+Comments are a good idea!
+
+I could have been much more verbose here.
+An obvious place for extra annotation is in explaining the arguments, and the
+choices behind them, in the call to `trim_galore`.
+For example, what does `--length 20` mean, without checking the documentation?
+
+## Spread it out
+
+In bash you can break a long command over multiple lines by ending the line with a whitespace followed by a `\`.
+You may disagree, but I find this:
+```bash
+trim_galore --paired --nextera --quality 20 --length 20 --clip_R1 15 --clip_R2 15 --fastqc --trim-n --fastqc_args $args --output_dir $trimmed $read_pair_1 $read_pair_2
+```
+much more difficult to understand than this:
+```bash
+trim_galore \
+    --paired \
+    --nextera \
+    --quality 20 \
+    --length 20 \
+    --clip_R1 15 --clip_R2 15 \
+    --fastqc \
+    --trim-n \
+    --fastqc_args "--outdir ${qcdir}" \
+    --output_dir ${outdir} \
+    $read_pair_1 $read_pair_2
+```
