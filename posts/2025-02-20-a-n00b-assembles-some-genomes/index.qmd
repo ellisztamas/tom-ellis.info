@@ -7,6 +7,9 @@ I recently had to assemble the genomes of four lines of *A. thaliana* using PacB
 
 This page will give code snippets to illustrate what I'm doing. I have simplified the paths to make them easier to read, but that means they won't run out of the box. Full scripts to repeat this are on the [GitHub repo](https://github.com/ellisztamas/meth_pedigree/tree/main/03_processing/05_genome_assembly), but be aware that the repo is fluid.
 
+**Update!** I implemented this as a snakemake pipeline. See [here](https://github.com/ellisztamas/atgap) if you are interested.
+
+
 # The data
 
 Our institute's sequencing facility wanted to test a new machine, so we ended up with enough reads for theoretical coverage of 155x and 256x. That's a lot of data! In fact it is probably too much, and we could probably have gotten away with much less.

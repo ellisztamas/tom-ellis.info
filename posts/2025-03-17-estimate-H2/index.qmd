@@ -68,7 +68,7 @@ boxplot(
 )
 ```
 
-## Fit variance components {##fit-variance-components}
+## Fit variance components
 
 To estimate variance explained by different aspects of the experimental design we fit a 'random-intercepts' model. That means that for every group (i.e. every tray, every line, etc) we estimate a mean, and quantify the variance between those means. This is like calculating the variance between the means in the boxplots above, but in a way that accounts for the other aspects of the experiment at once.
 
