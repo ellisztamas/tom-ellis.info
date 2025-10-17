@@ -1,0 +1,196 @@
+---
+title: "Heritability for binary data"
+author: "Tom Ellis"
+date: "2025-10-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library('lme4')
+suppressPackageStartupMessages(library(tidyverse))
+```
+
+```{r import-sim, eval=TRUE}
+source("https://raw.githubusercontent.com/ellisztamas/tom-ellis.info/refs/heads/main/posts/2025-03-08-simulate-a-phenotype/simulate-a-phenotype.R")
+```
+
+## Three ways to think about binary data
+
+I moved from the north of England, where I grew up, to Austria for my PhD in September of 2010.
+The north of England is not famous for its weather, so September in Austria was rather warmer than what I used to, and I felt hot in shorts, a T-shirt and sandals.
+Not so my Turkish office mate, who would come to the office with a coat, hat and gloves.
+That first winter in Austria was a challenge for her.
+
+Binary data describe discrete "yes" or "no" outcomes.
+For example, you could have asked whether I or my office-mate had brought a jacket to work that day in September.
+These are the data we can observe directly as zeroes and ones - I had, she had not.
+These data are on what we might call the **observed scale**.
+
+However, it probably would have made more sense to ask what was the *probability* that either of us brought a jacket on any given day.
+These probabilities expectations, so we can describe them as being on the **expected scale**.
+Those probabilities would depend on a bunch of things, such as which of us you asked, the weather on any given day, as well as a certain degree of stochastic.
+In contrast to discrete yes/no data, probabilities are continuous measures, and they are bounded by zero and one.
+The bounds make things tricky, because it makes it harder to apply usual statistical approaches that rely on adding numbers up.
+For example, it doesn't make sense to say that my office mate was 30% more likely to bring a jacket than I was on a day when it was raining, and we both brought jackets 100% of the time on rainy days, because probabilities of 130% make no sense.
+
+The solution is to link the expected scale to some kind of **latent scale** which doesn't have a minimum or a maximum.
+For example, we might think of some kind of measure of "how cold do you feel".
+Imagine feeling cold enough that you would definitely put on a jacket.
+I bet you can also imagine being much colder than that though, but that doesn't make you *even more* likely to put on a jacket than you already were.
+Another classic and concrete example I like come from from sheep farming: ewes may produce one or two lambs (a binary outcome), but this likely reflects hormone levels in the blood in some way (a continuous latent variable).
+On this latent scale, there is no constraint on adding things up, and linear models work as expected.
+The cost of this simplicity is that it becomes trickier to interpret the biological meaning of what's going on, but then there is no such thing as a free lunch.
+
+## Simulating data on three scales
+
+We have seen that we can think of binary data as existing on three scales:
+
+1. The observed data (zeroes and ones)
+2. The expected scale (probabilities)
+3. The latent scale (something continuous, and not directly observed)
+
+Usually tutorials start with some binary data and work backwards to the latent scale (see [this paper](https://doi.org/10.1534/genetics.115.186536), for example), because this is how an analysis typically works.
+Here, I will do the opposite to illustrate how binary data arises from underlying biological processes.
+
+### A simulated latent scale
+
+In a previous post I simulated a dataset similar to one I was working on, with several thousand individual plants of different genotypes, with some experimental block effects.
+I defined a normally-distributed trait that depended on tray and replicate effects (aspects of the experimental design), and it's genotype.
+(There was also some normally-distributed residual error, but we'll ignore that here).
+If we sum those effects we get a continuous trait which is roughly normally distributed around zero.
+
+```{r latent-vals}
+exp_design <- exp_design %>%
+  mutate(
+    latent_values = cohort_effect + replicate_effect + genetic_effect + tray_effect,
+  )
+
+exp_design %>%
+  ggplot(aes(x = latent_values)) +
+  geom_histogram()
+```
+
+Since these are simulations we could treat these values as traits themselves (I did that [here](/posts/2025-03-17-estimate-H2/).
+Here though I will use them as an arbitrary latent variable to generate some binary data.
+
+### Transform the latent to the expected scale
+
+The expected and latent scales are linked by a function called the **link function**.
+There are several link functions you might use to move from the expected to the latent scales, but a common choice is the **logit** function:
+$$
+\log \frac{p}{1-p}
+$$
+where $p$ is the expected (probability) value.
+
+However, we need to move in the opposite direction, from the latent to the expected scale, for which we need the inverse of the logit.
+Not surprisingly, this is called the **inverse logit**:
+$$
+\frac{1}{1+\exp^{-x}}
+$$
+where $x$ is a value on the latent scale.
+
+What is this doing?
+Here is a plot of how latent values between -10 and 10 translate to probabilities:
+
+```{r}
+inv_logit <- function(x) 1 / (1+exp(-x))
+
+xv <- seq(-10,10, 0.1)
+
+tibble(
+  latent_value = xv,
+  inv_logit = inv_logit(xv)
+) %>% 
+  ggplot(aes(x = latent_value, y = inv_logit)) +
+  geom_line() +
+  labs(
+    x = "Latent space",
+    y = "Probability space"
+  )
+
+
+```
+
+You can see that latent values of zero correspond to a probability of 0.5 (i.e. "yes" and "no" are equally likely).
+Furthermore, the curve is S-shaped, and levels of at zero and one at around -5 and 5 respectively, so extending the latent scale further would change the probabilities.
+If you are curious, you could also run some extreme values through the inverse logit, and they will still be bounded by zero and one (for example, try `inv_logit(-1e6)` or `inv_logit(1e6)`.
+
+To return to the example of the latent scale as "how cold do I feel?", then the y-axis would be the probability that you put on a coat.
+Once you felt 5 units of "coldness" you are already certain to put on a coat, and that doesn't change even if it gets colder.
+
+Let's convert the latent phenotypes in the simulations to proportions.
+
+```{r, include=TRUE}
+exp_design <- exp_design %>% 
+  # Add a column backtransforming expected values to the
+  # expected scale (a proportion between zero and one)
+  mutate(
+    expected_values = inv_logit(latent_values)
+  )
+
+# Plot a histogram of the expected values
+exp_design %>% 
+  ggplot(aes(x = expected_values)) +
+  geom_histogram()
+
+
+```
+
+The values show a fairly symmetrical distribution around 0.5, and no values extend beyond zero or one.
+That's what we expect, but is that just because the mean is far from the edges.
+As a sanity check, we can try that again, but add an arbitrary constant to the latent values.
+
+```{r, include=TRUE}
+exp_design %>% 
+  # Add a column backtransforming expected values to the
+  # expected scale (a proportion between zero and one)
+  mutate(
+    expected_values = inv_logit(latent_values + 3)
+  ) %>% 
+  ggplot(aes(x = expected_values)) +
+  geom_histogram()
+
+```
+
+Shifting the latent values to the right has shifted the expected values much closer to one, but not beyond it.
+This is the beauty of the (inverse) link function - no matter what values from the latent scale we give it, it is guaranteed to return valid values on the expected scale.
+
+### Binary values
+
+To simulate a vector of binary phenotypes, we draw from a binomial distribution of size one, using the expected values as probabilities for each draw.
+
+```{r, include=TRUE}
+exp_design <- exp_design %>% 
+  mutate(
+    binary_phenotype = rbinom(n(), 1, expected_values)
+  )
+```
+
+Here is a boxplot of expected values against binary outcomes.
+The spread is huge.
+You can easily get zeroes and ones from the whole spectrum of expected values.
+This is just how binomial sampling works - it's a messy process when you look at individual outcomes.
+
+```{r}
+exp_design %>% 
+  ggplot(aes(y = binary_phenotype, x = expected_values, group = binary_phenotype)) +
+  geom_boxplot()
+```
+
+However, you would expect to return the expected values if you average over enough binary outcomes.
+As a sanity check that this has worked, here is the mean binary phenotype in bins of 0.05 units of the expected values.
+You can see that as the expected value increases, so do the binary outcomes, at least on average, which is reassuring.
+
+```{r}
+exp_design %>% 
+  mutate(
+    cut_expected = cut(expected_values, seq(0,1,0.05))
+  ) %>% 
+  group_by(cut_expected) %>% 
+  summarise(
+    mean = mean(binary_phenotype)
+  ) %>% 
+  ggplot(aes(x = cut_expected, y = mean)) +
+  geom_point()
+```
+
