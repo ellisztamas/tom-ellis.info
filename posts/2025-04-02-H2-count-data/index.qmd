@@ -152,7 +152,7 @@ We can calculate heritability on the latent scale by dividing the variance expla
 
 ```{r}
 variance_components <- as.data.frame(VarCorr(poisson_model))
-variance_components$pve <- variance_components$sdcor / sum(variance_components$sdcor)
+variance_components$pve <- variance_components$vcov / sum(variance_components$vcov)
 variance_components
 ```
 

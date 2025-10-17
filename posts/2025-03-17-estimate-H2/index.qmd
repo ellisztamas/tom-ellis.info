@@ -103,7 +103,7 @@ We really want to know what *proportion* of variance is explained by each compon
 
 ```{r}
 variance_components <- as.data.frame(VarCorr(m1))
-variance_components$pve <- variance_components$sdcor / sum(variance_components$sdcor)
+variance_components$pve <- variance_components$vcov / sum(variance_components$vcov)
 variance_components
 ```
 
