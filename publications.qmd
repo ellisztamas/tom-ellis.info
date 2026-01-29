@@ -1,0 +1,33 @@
+---
+title: "Publications"
+---
+
+## 2026
+
+-   **Ellis T. J.** (2025), "How and why to quantify pairwise pleiotropy and genotype-by-environment interactions" [biorxiv 2026.01.09.698568](https://doi.org/10.64898/2026.01.09.698568)
+
+## 2025
+
+-   Fuster-Calvo A., Jaworski C.C, **Ellis T. J.**, Baskett A. (2025), Reduced fitness under drought stress in F1 hybrids of *Antirrhinum majus* varieties with divergent flower colors. Am J Bot. 2025;112:[e70129](http://dx.doi.org/10.1002/ajb2.70129)
+-   **Ellis, T. J.**, Field D. L., Barton, N. H. (2025), Joint estimation of paternity, sibships and pollen dispersal in a snapdragon hybrid zone. Molecular Ecology mec.70051 ([open access version](https://doi.org/10.1101/2024.01.05.574354))
+-   **Ellis, T. J.**, Nizhynska V., Pisupati R., Mollá-Morales A., Nordborg M., (2025), Bisulphite sequencing in the presence of cytosine-conversion errors, PLoS One 20(5): e0322539, [Open Access](https://doi.org/10.1371/journal.pone.0322539)
+
+## 2024
+
+-   Dahan-Meir T., **Ellis, T. J.**, Mafessoni, F., Sela, H., Rudich O., Manisterski J., Avivi-Ragolsky N., Raz A., Feldman M., Anikster Y, Nordborg M., Levy AA, (2024), 36-year study reveals the effects of microhabitats on a wild wheat population. Molecular Ecology, e17512. [PDF](/assets/pdfs/2024_dahan_etal.pdf).
+-   **Ellis, T. J.**, & Ågren, J. (2024). Adaptation to soil type contributes little to local adaptation in an Italian and a Swedish population of Arabidopsis thaliana growing on contrasting soils. Biology Letters. 20 (9):20240236. [Open access](https://royalsocietypublishing.org/doi/epdf/10.1098/rsbl.2024.0236).
+-   Clauw, P., **Ellis, T. J. (joint first author)**, Liu, H. J., & Sasaki, E. (2024). Beyond the standard GWAS-a guide for plant biologists. Plant And Cell Physiology, pcae079. [PDF](/assets/pdfs/2024_clauw_etal.pdf)
+-   Lee, G., Sanderson, B. J., **Ellis, T. J.**, Dilkes, B. P., McKay, J. K., Ågren, J., & Oakley, C. G. (2024). A large-effect fitness trade-off across environments is explained by a single mutation affecting cold acclimation. Proceedings of the National Academy of Sciences, 121(6):e2317461121.
+-   Butković A., **Ellis, T. J. (joint first author)**, González, R., Jaegle, B., Nordborg, M., Elena S. F., (2024), Genetic basis of Arabidopsis thaliana responses to infection by naïve and adapted isolates of turnip mosaic virus, eLife 2023;12:RP89749. [PDF](/assets/pdfs/2023_butkovic_etal.pdf)
+
+## 2022
+
+-   Durán, P., **Ellis, T. J. (joint first author)**, Thiergart, T. , Ågren, J. & Hacquard, S.,(2022) Climate drives rhizosphere microbiome variation and divergent selection between geographically distant Arabidopsis populations. New Phytologist, 236:608-621. [PDF](/assets/pdfs/2022_duran_etal.pdf)
+
+## Pre-pandemic
+
+-   **Ellis, T. J.**, Postma, F. M., Oakley, C. G., & Ågren, J. (2021). Life‐history trade‐offs and the genetic basis of fitness in *Arabidopsis thaliana*. Molecular Ecology, 30(12):2846-2858. [PDF](/assets/pdfs/2021_fecundity_components.pdf)
+-   Thiergart, T., Durán, P., **Ellis, T.**, Vannier, N., Garrido-Oter, R., Kemen, E., Roux F., Ågren J., Schulze-Lefert, P. & Hacquard, S. (2020). Root microbiota assembly and adaptive differentiation among European Arabidopsis populations. Nature ecology & evolution, 4(1):122-131. [PDF](/assets/pdfs/2019_thiergart.pdf)
+-   **Ellis, T. J.**, Field, D. L., & Barton, N. H. (2018). Efficient inference of paternity and sibship inference given known maternity via hierarchical clustering. Molecular Ecology Resources, 18(5):988-999. [PDF](/assets/pdfs/2018_FAPS_paper.pdf)
+-   **Ellis, T. J.**, & Field, D. L. (2016). Repeated gains in yellow and anthocyanin pigmentation in flower colour transitions in the Antirrhineae. Annals of Botany, 117(7):1133-1140. [PDF](/assets/pdfs/2016_floral_transitions.pdf)
+-   Streinzer, M., **Ellis, T**, Paulus, H. F., & Spaethe, J. (2010). Visual discrimination between two sexually deceptive *Ophrys* species by a bee pollinator. Arthropod-Plant Interactions, 4(3):141-148. [PDF](/assets/pdfs/2010_Streinzer.pdf)
