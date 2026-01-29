@@ -18,8 +18,8 @@ Local adaptation is the process by which populations respond to the selection pr
 
 A particular focus has been on interactions between plants an microbes. In collaboration with Stepháne Hacquard's group at MPI Cologne we found that both the abiotic and biotic aspects of soils where *A. thaliana* grows [vary enormously across Europe]((/assets/pdfs/2019_thiergart.pdf)), but that their weedy lifestyle means that plants seem to be robust to variation in both [microbiome](/assets/pdfs/2022_duran_etal.pdf) and [soil type](https://royalsocietypublishing.org/doi/epdf/10.1098/rsbl.2024.0236).
 
-As an offshoot of this, I got frustrated by existing methods to investigate pleiotropy (when one gene affects multiple traits). Usual approaches (including [my own](/assets/pdfs/2021_fecundity_components.pdf) previous work) rely on null-hypothesis tests to count the number of traits involved, but this is a blunt tool that underestimates the extent of pleiotropy. Instead, it's better to quantify the strength and direction of pleiotropic effects. I developed an R package [sintillate](https://github.com/ellisztamas/sintillate) to do this.
-
+As an offshoot of this, I got frustrated by existing methods to investigate pleiotropy (when one gene affects multiple traits). Usual approaches (including [my own](/assets/pdfs/2021_fecundity_components.pdf) previous work) rely on null-hypothesis tests to count the number of traits involved, but this is a blunt tool that underestimates the extent of pleiotropy. Instead, it's better to quantify the strength and direction of pleiotropic effects. I developed a [method to do this](https://doi.org/10.64898/2026.01.09.698568) and an R package [psiotropy](https://github.com/ellisztamas/psiotropy) to implement it.
+  
 ## Flower colour in a snapdragon hybrid zone
 
 Natural hybrid zones occur where partially diverged populations come into contact and interbreed. This means that new combinations of genes from each population which are continuously being combined in new hybrids, and tested by natural selection. This makes them fascinating 'evolutionary laboratories' for observing natural selection in real time.
@@ -32,4 +32,3 @@ During my PhD with Nick Barton and David Field at IST Austria, I studied a hybri
 4.  I [extended FAPS](https://doi.org/10.1101/2024.01.05.574354) to incorporate additional covariates, and used that to jointly infer the pedigree and the distribution of pollen disersal distances.
 
 My full thesis can be found [here](https://research-explorer.app.ist.ac.at/download/1398/5106/IST-2016-526-v1%2B1_Ellis_signed_thesis.pdf).
-
