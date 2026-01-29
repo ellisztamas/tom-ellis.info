@@ -1,8 +1,20 @@
 ---
-title: "Heritability for binary data"
-author: "Tom Ellis"
+title: "Broad-sense heritability for binary data"
 date: "2025-10-06"
+execute: 
+  warning: false
+  message: false
 ---
+
+In several previous posts I:
+
+* [Simulated](/posts/2025-03-08-simulate-a-phenotype/) a phenotyping dataset
+* Estimated broad-sense heritability for a [normally distributed phenotype](/posts/2025-03-17-estimate-H2/)
+* Did the same for a phenotype [based on counts](/posts/2025-04-02-H2-count-data/)
+
+This post extends those to cover binary traits, which are quite a bit trickier than normal and count data.
+This post is based on the [excellent paper](https://doi.org/10.1534/genetics.115.186536) by Pierre de Villemereuil and colleagues.
+That paper focusses on count data, so here I try to go into more detail about binary data.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -10,51 +22,44 @@ library('lme4')
 suppressPackageStartupMessages(library(tidyverse))
 ```
 
-```{r import-sim, eval=TRUE}
+```{r import-sim, eval=TRUE, include=FALSE}
 source("https://raw.githubusercontent.com/ellisztamas/tom-ellis.info/refs/heads/main/posts/2025-03-08-simulate-a-phenotype/simulate-a-phenotype.R")
 ```
 
 ## Three ways to think about binary data
 
-I moved from the north of England, where I grew up, to Austria for my PhD in September of 2010.
-The north of England is not famous for its weather, so September in Austria was rather warmer than what I used to, and I felt hot in shorts, a T-shirt and sandals.
-Not so my Turkish office mate, who would come to the office with a coat, hat and gloves.
+I grew up in the north of England, but moved to Austria in September of 2010.
+The north of England is not famous for clement weather, so September in Austria was rather warmer than what I used to, and I felt hot in shorts, a T-shirt and sandals. Not so my Turkish office mate, who would come to the office with a coat, hat and gloves.
 That first winter in Austria was a challenge for her.
 
-Binary data describe discrete "yes" or "no" outcomes.
-For example, you could have asked whether I or my office-mate had brought a jacket to work that day in September.
+Binary data describe discrete "yes" or "no" outcomes. For example, you could have asked whether I or my office-mate had brought a jacket to work that day in September.
 These are the data we can observe directly as zeroes and ones - I had, she had not.
 These data are on what we might call the **observed scale**.
 
-However, it probably would have made more sense to ask what was the *probability* that either of us brought a jacket on any given day.
-These probabilities expectations, so we can describe them as being on the **expected scale**.
-Those probabilities would depend on a bunch of things, such as which of us you asked, the weather on any given day, as well as a certain degree of stochastic.
-In contrast to discrete yes/no data, probabilities are continuous measures, and they are bounded by zero and one.
-The bounds make things tricky, because it makes it harder to apply usual statistical approaches that rely on adding numbers up.
-For example, it doesn't make sense to say that my office mate was 30% more likely to bring a jacket than I was on a day when it was raining, and we both brought jackets 100% of the time on rainy days, because probabilities of 130% make no sense.
+However, it probably would have made more sense to ask what was the *probability* that either of us brought a jacket on any given day. These probabilities expectations, so we can describe them as being on the **expected scale**. Those probabilities would depend on a bunch of things, such as which of us you asked, the weather on any given day, as well as a certain degree of stochastic. In contrast to discrete yes/no data, probabilities are continuous measures, and they are bounded by zero and one. The bounds make things tricky, because it makes it harder to apply usual statistical approaches that rely on adding numbers up. For example, it doesn't make sense to say that my office mate was 30% more likely to bring a jacket than I was on a day when it was raining, and we both brought jackets 100% of the time on rainy days, because probabilities of 130% make no sense.
 
-The solution is to link the expected scale to some kind of **latent scale** which doesn't have a minimum or a maximum.
-For example, we might think of some kind of measure of "how cold do you feel".
-Imagine feeling cold enough that you would definitely put on a jacket.
+The solution is to link the expected scale to some kind of **latent scale** which doesn't have a minimum or a maximum. For example, we might think of some kind of measure of "how cold do you feel". Imagine feeling cold enough that you would definitely put on a jacket.
 I bet you can also imagine being much colder than that though, but that doesn't make you *even more* likely to put on a jacket than you already were.
-Another classic and concrete example I like come from from sheep farming: ewes may produce one or two lambs (a binary outcome), but this likely reflects hormone levels in the blood in some way (a continuous latent variable).
+Another classic and concrete example I like comes from from sheep farming: ewes may produce one or two lambs (a binary outcome), but this likely reflects hormone levels in the blood in some way (a continuous latent variable).
 On this latent scale, there is no constraint on adding things up, and linear models work as expected.
+Furthermore, this is the scale where important biological process happen that we would really like to understand, like *why* there is variation in a sheep's blood hormone levels, and *how* that relates to the number of lambs she produces.
 The cost of this simplicity is that it becomes trickier to interpret the biological meaning of what's going on, but then there is no such thing as a free lunch.
+
+To summarise, we can think of binary data existing on three scales:
+
+1. Zeroes and ones you can directly observe. This is the **observed** or **data** scale.
+2. Probabilities of observing those binary outcomes. These probabilities are themselves bounded by zero and one. This is the **expected scale**.
+3. A **latent** scale that transforms the probabilities onto a scale that isn't bounded. This is the least intuitive scale to interpret, but the easiest scale to work in, and often where the interesting biology is.
 
 ## Simulating data on three scales
 
-We have seen that we can think of binary data as existing on three scales:
-
-1. The observed data (zeroes and ones)
-2. The expected scale (probabilities)
-3. The latent scale (something continuous, and not directly observed)
-
 Usually tutorials start with some binary data and work backwards to the latent scale (see [this paper](https://doi.org/10.1534/genetics.115.186536), for example), because this is how an analysis typically works.
-Here, I will do the opposite to illustrate how binary data arises from underlying biological processes.
+Here, I will do the opposite: we'll start from the latent scale and work forwards to the observed scale. 
+The goal is to illustrate how binary data arises from underlying biological processes.
 
 ### A simulated latent scale
 
-In a previous post I simulated a dataset similar to one I was working on, with several thousand individual plants of different genotypes, with some experimental block effects.
+In a [previous post](/posts/2025-03-08-simulate-a-phenotype/) I simulated a dataset similar to one I was working on, with several thousand individual plants of different genotypes, with some experimental block effects.
 I defined a normally-distributed trait that depended on tray and replicate effects (aspects of the experimental design), and it's genotype.
 (There was also some normally-distributed residual error, but we'll ignore that here).
 If we sum those effects we get a continuous trait which is roughly normally distributed around zero.
@@ -70,33 +75,26 @@ exp_design %>%
   geom_histogram()
 ```
 
-Since these are simulations we could treat these values as traits themselves (I did that [here](/posts/2025-03-17-estimate-H2/).
-Here though I will use them as an arbitrary latent variable to generate some binary data.
+Since these are simulations we could treat these values as traits themselves (I did that [here](/posts/2025-03-17-estimate-H2/)). In this post I will use them as an arbitrary latent variable to generate some binary data.
 
 ### Transform the latent to the expected scale
 
-The expected and latent scales are linked by a function called the **link function**.
-There are several link functions you might use to move from the expected to the latent scales, but a common choice is the **logit** function:
-$$
+The expected and latent scales are linked by a function called the **link function**. There are several link functions you might use to move from the expected to the latent scales, but a common choice is the **logit** function: $$
 \log \frac{p}{1-p}
-$$
-where $p$ is the expected (probability) value.
+$$ where $p$ is the expected (probability) value.
 
-However, we need to move in the opposite direction, from the latent to the expected scale, for which we need the inverse of the logit.
-Not surprisingly, this is called the **inverse logit**:
-$$
+However, we need to move in the opposite direction, from the latent to the expected scale, for which we need the inverse of the logit. Not surprisingly, this is called the **inverse logit**: $$
 \frac{1}{1+\exp^{-x}}
-$$
-where $x$ is a value on the latent scale.
+$$ where $x$ is a value on the latent scale.
 
-What is this doing?
-Here is a plot of how latent values between -10 and 10 translate to probabilities:
+What is this doing? Here is a plot of how latent values between -10 and 10 translate to probabilities:
 
 ```{r}
+# Define a function to calculate the inverse logit function.
 inv_logit <- function(x) 1 / (1+exp(-x))
 
+# Plot the inverse logit for latent-scale values from -10 to 10
 xv <- seq(-10,10, 0.1)
-
 tibble(
   latent_value = xv,
   inv_logit = inv_logit(xv)
@@ -111,12 +109,10 @@ tibble(
 
 ```
 
-You can see that latent values of zero correspond to a probability of 0.5 (i.e. "yes" and "no" are equally likely).
-Furthermore, the curve is S-shaped, and levels of at zero and one at around -5 and 5 respectively, so extending the latent scale further would change the probabilities.
-If you are curious, you could also run some extreme values through the inverse logit, and they will still be bounded by zero and one (for example, try `inv_logit(-1e6)` or `inv_logit(1e6)`.
+You can see that latent values of zero correspond to a probability of 0.5 (i.e. "yes" and "no" are equally likely). Furthermore, the curve is S-shaped, and levels of at zero and one at around -5 and 5 respectively, so extending the latent scale further would change the probabilities. If you are curious, you could also run some extreme values through the inverse logit, and they will still be bounded by zero and one.
+For example, try `inv_logit(-1e6)` or `inv_logit(1e6)`.
 
-To return to the example of the latent scale as "how cold do I feel?", then the y-axis would be the probability that you put on a coat.
-Once you felt 5 units of "coldness" you are already certain to put on a coat, and that doesn't change even if it gets colder.
+To return to the example of the latent scale as "how cold do I feel?", then the y-axis would be the probability that you put on a coat. Once you felt 5 units of "coldness" you are already certain to put on a coat, and that doesn't change even if it gets colder.
 
 Let's convert the latent phenotypes in the simulations to proportions.
 
@@ -136,9 +132,7 @@ exp_design %>%
 
 ```
 
-The values show a fairly symmetrical distribution around 0.5, and no values extend beyond zero or one.
-That's what we expect, but is that just because the mean is far from the edges.
-As a sanity check, we can try that again, but add an arbitrary constant to the latent values.
+The values show a fairly symmetrical distribution around 0.5, and no values extend beyond zero or one. That's what we expect, but is that just because the mean is far from the edges. As a sanity check, we can try that again, but add an arbitrary constant to the latent values.
 
 ```{r, include=TRUE}
 exp_design %>% 
@@ -152,8 +146,7 @@ exp_design %>%
 
 ```
 
-Shifting the latent values to the right has shifted the expected values much closer to one, but not beyond it.
-This is the beauty of the (inverse) link function - no matter what values from the latent scale we give it, it is guaranteed to return valid values on the expected scale.
+Shifting the latent values to the right has shifted the expected values much closer to one, but not beyond it. This is the beauty of the (inverse) link function - no matter what values from the latent scale we give it, it is guaranteed to return valid values on the expected scale.
 
 ### Binary values
 
@@ -166,10 +159,7 @@ exp_design <- exp_design %>%
   )
 ```
 
-Here is a boxplot of expected values against binary outcomes.
-The spread is huge.
-You can easily get zeroes and ones from the whole spectrum of expected values.
-This is just how binomial sampling works - it's a messy process when you look at individual outcomes.
+Here is a boxplot of expected values against binary outcomes. The spread is huge. You can easily get zeroes and ones from the whole spectrum of expected values. This is just how binomial sampling works - it's a messy process when you look at individual outcomes.
 
 ```{r}
 exp_design %>% 
@@ -177,9 +167,7 @@ exp_design %>%
   geom_boxplot()
 ```
 
-However, you would expect to return the expected values if you average over enough binary outcomes.
-As a sanity check that this has worked, here is the mean binary phenotype in bins of 0.05 units of the expected values.
-You can see that as the expected value increases, so do the binary outcomes, at least on average, which is reassuring.
+However, you would expect to return the expected values if you average over enough binary outcomes. As a sanity check that this has worked, here is the mean binary phenotype in bins of 0.05 units of the expected values. You can see that as the expected value increases, so do the binary outcomes, at least on average, which is reassuring.
 
 ```{r}
 exp_design %>% 
@@ -191,6 +179,104 @@ exp_design %>%
     mean = mean(binary_phenotype)
   ) %>% 
   ggplot(aes(x = cut_expected, y = mean)) +
-  geom_point()
+  geom_point() + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))
 ```
 
+## Variance components on the latent scale
+
+Since this is a simulated experiment we know what the actual variances due to line, tray and replicate on the latent scale should have been:
+
+```{r}
+# Variance between lines
+var(genetic_effects$genetic_effect)
+```
+
+```{r}
+# Variance between trays
+var(tray_effects$tray_effect)
+```
+
+```{r}
+# Variance between replciates
+var(replicate_effects$replicate_effect)
+```
+
+See the [simulation code](/posts/2025-03-08-simulate-a-phenotype/) for where those number came from.
+
+This code uses `glmer` from the `lme4` package to fit a generalised linear model of the binary phenotype with random effects for genotype (line), and the structure of the experiment (tray and replicate).
+
+```{r}
+logit_model <- glmer(
+  binary_phenotype ~ (1 | replicate) + (1 | tray) + (1 | line),
+  data = exp_design,
+  family ='binomial'
+  )
+
+summary(logit_model)
+```
+
+The model throws a warning about the fit being singular.
+This means that one or more variance components, in this case `tray`, are zero.
+That's not surprising, because the real value is indeed very close to zero.
+
+The other surprise is that the variace components for `line` and especially `replicate` are much lower than the true values.
+That is in stark contrast to similar models for a [normally distributed trait](/posts/2025-03-17-estimate-H2/#fit-variance-components) and a [Poisson trait](/posts/2025-03-17-estimate-H2/#fit-variance-components), when we recovered values very close to what we knew is the correct answer.
+I think there are several reasons for this:
+
+1. The global mean latent value is centred around 0. That means that the expected values are distributed around 0.5, which is where a binary variable has the highest sampling variance, and is therefore the least predictable.
+2. Observed data can only be zero or one, but with only three replicate plants per line there is very little information to estimate line means.
+3. There are only three replicates, so there is little information about the variance between them, so the mixed model pulls this estimate towards zero.
+
+## Heritability on the latent and data scales
+
+To calculate the proportion of overall variance explained by differences between lines, trays and replicates on the latent scale, we can just add up the variance components and divide by the total.
+
+```{r}
+# Extract the variance components
+variance_components <- as.data.frame(VarCorr(logit_model))
+# Add column for proportion variance explained
+variance_components$pve <- variance_components$sdcor / sum(variance_components$sdcor)
+
+variance_components
+```
+
+Difference between lines explain about 76% of the variation.
+That's pretty high!
+However, we should be careful about interpreting that number as indicating that there is a strong genetic basis for the trait.
+First, as we saw in the previous section, the actual variance component it is based on is not estimated well.
+Second, it does not account for the variance between individuals that arises due to the binomial sampling process.
+
+The package `QGglmm` is a very handy tool for calculating heritabilities on the latent scale to the data scale.
+The following code extracts the mean, genetic variance and total variance estimated on the latent scale, and transforms them to the data scale and adds binomial variance.
+
+```{r}
+library("QGglmm")
+
+variance_components <- as_tibble(VarCorr(logit_model))
+
+model_mean <- fixef(logit_model)
+genetic_variance <- variance_components$vcov[1]
+phenotypic_variance <- sum(variance_components$vcov)
+
+QGparams(
+      mu = model_mean,
+      var.p = phenotypic_variance,
+      var.a = genetic_variance,
+      model = 'binom1.logit',
+      verbose = FALSE
+    )
+```
+
+The command returns the mean and phenotypic and genetic variances on the data scale, as well as the estimate of heritability.
+This is 2.5% - **much** lower than the estimate on the latent scale!
+This is an even bigger difference than for [Poisson data](/posts/2025-04-02-H2-count-data/#heritability-on-the-latent-and-data-scales).
+This is a point that the authors of `QGglmm` make in the paper - you should expect binary data to be noisy.
+
+## Binary data need careful design
+
+The lack of power is instructive.
+In this post I used data from a simulation I wrote for something else, to mimic an experiment I was doing in real life that doesn't involve any binary phenotypes.
+It has just so happened that the design in question doesn't have great predictive power for a binary trait.
+A better design for saying something quantitative about a binary trait would have been to increase replication considerably per replicate, probably at the cost of the number of lines involved.
+There is a corollary for real life here, that you should be careful about trying to estimate anything from binary data, unless you have designed your study to explicitly do some from the outset.
