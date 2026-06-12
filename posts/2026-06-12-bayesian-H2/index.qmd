@@ -1,0 +1,198 @@
+---
+title: "Estimating broad-sense heritability with a Bayesian model"
+date: "2026-06-12"
+execute: 
+  warning: false
+  message: false
+---
+
+I previously [simulated](/posts/2025-03-08-simulate-a-phenotype/) a phenotyping dataset and estimated broad-sense heritability for a normally distributed phenotype using a [likelihood-based linear model](/posts/2025-03-17-estimate-H2/) in `lme4`.
+However, I am at heart a Bayesian, so I was curious how this would work with a Bayesian model.
+
+In this post I use the same dataset to do a very similar analysis using `brms`.
+`brms` is an R package that is designed to have a very similar interface to `lme4`, but is really a front end to the much deeper Stan language for fitting Bayesian heirarchical models.
+That means that if you already know how to model with `lme4` you can get a Bayesian analysis going with no effort, but you also have access to much more complicated models with the same interface.
+
+Another strength of `brms` is that Paul Bürkner has done a superb job documenting examples of how to use it for different applications.
+Have a look at the [project website](https://paulbuerkner.com/brms/index.html), and especially the (many!) [vignettes](https://paulbuerkner.com/brms/articles/index.html).
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library('brms')
+suppressPackageStartupMessages(library(tidyverse))
+```
+
+## The phenotype data
+
+```{r import-sim, eval=TRUE, include=FALSE}
+source("https://raw.githubusercontent.com/ellisztamas/tom-ellis.info/refs/heads/main/posts/2025-03-08-simulate-a-phenotype/simulate-a-phenotype.R")
+```
+
+## Install `brms`
+
+In principle `brms` is installed and loaded like any other R package
+
+```r
+install.packages('brms')
+library('brms')
+```
+
+In practice, it can be challenging to get it to work because it relies on a huge stack of dependencies.
+On my machine (running Ubuntu 24) I had to downgrade my version of R to 4.5.2 because `Rcpp` would not cooperate with R 4.6.
+If you are also on Linux, check you have some obvious system dependencies:
+
+```sh
+sudo apt install build-essential libxml2-dev libcurl4-openssl-dev libssl-dev libv8-dev
+```
+
+If you're on another OS, your mileage may vary.
+
+## Swap `lme4` for `brms`
+
+The phenotype data are defined by genotype, replicate cohort (a blocking factor), and tray (a blocking factor nested in cohort); see [here](/posts/2025-03-08-simulate-a-phenotype/) for the details of how I generated them.
+The effects genotypes, cohorts and tray were drawn from normal distributions with standard deviations of 0.5, 0.2 and 0.1 respectively.
+So, if the analysis is working, we should recover estimates close to those values.
+
+As outlined in [this post](/posts/2025-03-17-estimate-H2/), it is straightforward to estimate the variance components as random-intercept terms in `lme4`:
+
+```{r}
+library(lme4)
+
+lmer(
+  normal_phenotype ~ (1 | replicate) + (1 | tray) + (1 | line), 
+  data = exp_design
+)
+```
+
+This extract from the output of the model shows that the estimates are pretty close to the correct values:
+
+```
+ Groups    Name        Variance Std.Dev.
+ line      (Intercept) 0.220817 0.46991 
+ tray      (Intercept) 0.004996 0.07068 
+ replicate (Intercept) 0.030970 0.17598 
+ Residual              1.042678 1.02112 
+ ```
+
+To run the same model in `brms` we only need to swap the name of the command.
+
+```{r}
+brm_defaults <- brm(
+  normal_phenotype ~ (1 | replicate) + (1 | tray) + (1 | line), 
+  data = exp_design
+)
+```
+ 
+There is a lot going on with the sampling and model output which is largely beyond the scope of this post.
+I will focus on how well the model is estimating the variance components.
+
+The summary of the model gives a few different estimates.
+
+```{r}
+summary(brm_defaults)
+```
+We are primarily interested in the standard deviation estimates (the lines starting with `sd` under `Multilevel Hyperparamters`).
+For example, these lines give information about the estimates of the standard deviation between genotype means.
+
+```sh
+~line (Number of levels: 624) 
+              Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+sd(Intercept)     0.47      0.04     0.39     0.54 1.00     1013     2258
+```
+You can see that the estimate of 0.47 is very close to the true value, and the estimate from `lme4`.
+The same is true for the estimate of the standard deviation between trays (0.07).
+However, the estimate for standard deviation between replicate cohorts is more than double the true value.
+The reason for this is that there are lots of lines and trays (624 and 39) respectively, so there are plenty of data points to estimate the variance components.
+In contrast, there are only three replicate cohorts, so there is not much information in the data about the true standard deviation between cohorts.
+
+## Using 'perfect' priors
+
+A strength of Bayesian statistics is that it forces us to be explicit about our prior beliefs about the things we want to estimate.
+In the previous model, we didn't follow that philosophy - we didn't define any explicit prior expectations about the parametes, and just used the implicit default settings.
+That gave us a poor answer.
+In fact, `brms` was telling us that the model was a poor fit - we got a warning about 'divergent transitions'.
+In this case, it means that the default priors are not appropriate here.
+That is actually quite a deep but subtle advantage of Bayesian models - when the model is poor, the model tends to warn you about that by failing, rather than letting you waste time later messing with poor results from a bad model.
+
+In this case, we already know that the true standard deviation between replicate cohorts is 0.2.
+To demonstrate that poor prior choice is what causes the divergent transitions, we can explicitly set a strong prior on the standard deviation between replicates that tells the model to look in the correct area of sampling space.
+ 
+```{r}
+# Define the prior for the standard deviation of the replicate group
+priors <- c(
+  set_prior("normal(0, 0.2)", class = "sd", group = "replicate")
+)
+
+# Fit the model with the defined prior
+brms_perfect prior <- brm(
+  normal_phenotype ~ (1 | replicate) + (1 | tray) + (1 | line), 
+  data = exp_design,
+  prior = priors
+)
+```
+
+The summary of the model shows that the standard deviation between replicates is now estimated accurately.
+Furthermore, the warning about divergent transitions has disappeared.
+
+```{r}
+summary(brms_perfect)
+```
+This is of course a bit silly - usually we wouldn't know the correct answer.
+I just wanted to demonstrate that better priors can 'fix' a failing model.
+
+## Priors that are too strong
+
+Let's consider another 
+
+```{r}
+# Define the prior for the standard deviation of the replicate group
+priors <- c(
+  set_prior("normal(0, 0.2)", class = "sd")
+)
+
+# Fit the model with the defined prior
+brms_wrong_priors <- brm(
+  normal_phenotype ~ (1 | replicate) + (1 | tray) + (1 | line), 
+  data = exp_design,
+  prior = priors
+)
+```
+ 
+## Picking priors in real life
+
+```{r}
+
+exp_design %>% 
+  group_by(line) %>% 
+  summarise(z = mean(normal_phenotype)) %>% 
+  pull(z) %>% 
+  sd()
+
+exp_design %>% 
+  group_by(replicate) %>% 
+  summarise(z = mean(normal_phenotype)) %>% 
+  pull(z) %>% 
+  sd()
+
+exp_design %>% 
+  group_by(tray) %>% 
+  summarise(z = mean(normal_phenotype)) %>% 
+  pull(z) %>% 
+  sd()
+```
+```{r}
+# Define the prior for the standard deviation of the replicate group
+priors <- c(
+  set_prior("normal(0, 0.75)", class = "sd", group = "line"),
+  set_prior("normal(0, 0.18)", class = "sd", group = "replicate"),
+  set_prior("normal(0, 0.23)", class = "sd", group = "tray")
+)
+
+# Fit the model with the defined prior
+brms_best_guess <- brm(
+  normal_phenotype ~ (1 | replicate) + (1 | tray) + (1 | line), 
+  data = exp_design,
+  prior = priors
+)
+```
+
