@@ -4,17 +4,14 @@ date: "2026-06-12"
 execute: 
   warning: false
   message: false
+  cache: true
 ---
 
-I previously [simulated](/posts/2025-03-08-simulate-a-phenotype/) a phenotyping dataset and estimated broad-sense heritability for a normally distributed phenotype using a [likelihood-based linear model](/posts/2025-03-17-estimate-H2/) in `lme4`.
-However, I am at heart a Bayesian, so I was curious how this would work with a Bayesian model.
+I previously [simulated](/posts/2025-03-08-simulate-a-phenotype/) a phenotyping dataset and estimated broad-sense heritability for a normally distributed phenotype using a [likelihood-based linear model](/posts/2025-03-17-estimate-H2/) in `lme4`. However, I am at heart a Bayesian, so I was curious how this would work with a Bayesian model.
 
-In this post I use the same dataset to do a very similar analysis using `brms`.
-`brms` is an R package that is designed to have a very similar interface to `lme4`, but is really a front end to the much deeper Stan language for fitting Bayesian heirarchical models.
-That means that if you already know how to model with `lme4` you can get a Bayesian analysis going with no effort, but you also have access to much more complicated models with the same interface.
+In this post I use the same dataset to do a very similar analysis using `brms`. `brms` is an R package that is designed to have a very similar interface to `lme4`, but is really a front end to the much deeper Stan language for fitting Bayesian heirarchical models. That means that if you already know how to model with `lme4` you can get a Bayesian analysis going with no effort, but you also have access to much more complicated models with the same interface.
 
-Another strength of `brms` is that Paul Bürkner has done a superb job documenting examples of how to use it for different applications.
-Have a look at the [project website](https://paulbuerkner.com/brms/index.html), and especially the (many!) [vignettes](https://paulbuerkner.com/brms/articles/index.html).
+Another strength of `brms` is that Paul Bürkner has done a superb job documenting examples of how to use it for different applications. Have a look at the [project website](https://paulbuerkner.com/brms/index.html), and especially the (many!) [vignettes](https://paulbuerkner.com/brms/articles/index.html).
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -32,16 +29,14 @@ source("https://raw.githubusercontent.com/ellisztamas/tom-ellis.info/refs/heads/
 
 In principle `brms` is installed and loaded like any other R package
 
-```r
+``` r
 install.packages('brms')
 library('brms')
 ```
 
-In practice, it can be challenging to get it to work because it relies on a huge stack of dependencies.
-On my machine (running Ubuntu 24) I had to downgrade my version of R to 4.5.2 because `Rcpp` would not cooperate with R 4.6.
-If you are also on Linux, check you have some obvious system dependencies:
+In practice, it can be challenging to get it to work because it relies on a huge stack of dependencies. On my machine (running Ubuntu 24) I had to downgrade my version of R to 4.5.2 because `Rcpp` would not cooperate with R 4.6. If you are also on Linux, check you have some obvious system dependencies:
 
-```sh
+``` sh
 sudo apt install build-essential libxml2-dev libcurl4-openssl-dev libssl-dev libv8-dev
 ```
 
@@ -49,9 +44,7 @@ If you're on another OS, your mileage may vary.
 
 ## Swap `lme4` for `brms`
 
-The phenotype data are defined by genotype, replicate cohort (a blocking factor), and tray (a blocking factor nested in cohort); see [here](/posts/2025-03-08-simulate-a-phenotype/) for the details of how I generated them.
-The effects genotypes, cohorts and tray were drawn from normal distributions with standard deviations of 0.5, 0.2 and 0.1 respectively.
-So, if the analysis is working, we should recover estimates close to those values.
+The phenotype data are defined by genotype, replicate cohort (a blocking factor), and tray (a blocking factor nested in cohort); see [here](/posts/2025-03-08-simulate-a-phenotype/) for the details of how I generated them. The effects genotypes, cohorts and tray were drawn from normal distributions with standard deviations of 0.5, 0.2 and 0.1 respectively. So, if the analysis is working, we should recover estimates close to those values.
 
 As outlined in [this post](/posts/2025-03-17-estimate-H2/), it is straightforward to estimate the variance components as random-intercept terms in `lme4`:
 
@@ -66,46 +59,50 @@ lmer(
 
 This extract from the output of the model shows that the estimates are pretty close to the correct values:
 
+```         
+Groups    Name        Variance Std.Dev.
+line      (Intercept) 0.220817 0.46991 
+tray      (Intercept) 0.004996 0.07068 
+replicate (Intercept) 0.030970 0.17598 
+Residual              1.042678 1.02112 
 ```
- Groups    Name        Variance Std.Dev.
- line      (Intercept) 0.220817 0.46991 
- tray      (Intercept) 0.004996 0.07068 
- replicate (Intercept) 0.030970 0.17598 
- Residual              1.042678 1.02112 
- ```
 
 To run the same model in `brms` we only need to swap the name of the command.
 
-```{r}
-brm_defaults <- brm(
+```{r brms-defaults}
+#| results: 'hide'
+#| warning: false
+#| message: false
+
+brms_defaults <- brm(
   normal_phenotype ~ (1 | replicate) + (1 | tray) + (1 | line), 
   data = exp_design
 )
 ```
- 
-There is a lot going on with the sampling and model output which is largely beyond the scope of this post.
-I will focus on how well the model is estimating the variance components.
+
+There is a lot going on with the sampling and model output which is largely beyond the scope of this post. I will focus on how well the model is estimating the variance components.
 
 The summary of the model gives a few different estimates.
 
 ```{r}
-summary(brm_defaults)
+summary(brms_defaults)
 ```
-We are primarily interested in the standard deviation estimates (the lines starting with `sd` under `Multilevel Hyperparamters`).
-For example, these lines give information about the estimates of the standard deviation between genotype means.
 
-```sh
+We are primarily interested in the standard deviation estimates (the lines starting with `sd` under `Multilevel Hyperparamters`). For example, these lines give information about the estimates of the standard deviation between genotype means.
+
+``` sh
 ~line (Number of levels: 624) 
-              Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
 sd(Intercept)     0.47      0.04     0.39     0.54 1.00     1013     2258
 ```
-You can see that the estimate of 0.47 is very close to the true value, and the estimate from `lme4`.
-The same is true for the estimate of the standard deviation between trays (0.07).
-However, the estimate for standard deviation between replicate cohorts is more than double the true value.
-The reason for this is that there are lots of lines and trays (624 and 39) respectively, so there are plenty of data points to estimate the variance components.
-In contrast, there are only three replicate cohorts, so there is not much information in the data about the true standard deviation between cohorts.
 
-## Using 'perfect' priors
+The summary table reports the posterior-mean estimate of the standard deviation estimate.
+Of course, this is a Bayesian model, so the full R object also gives you access to the full posterior sample, but we will stick to the posterior means here.
+
+You can see that the estimate of 0.47 is very close to the true value, and the estimate from `lme4`.
+The same is true for the estimate of the standard deviation between trays (0.07). However, the estimate for standard deviation between replicate cohorts is more than double the true value. The reason for this is that there are lots of lines and trays (624 and 39) respectively, so there are plenty of data points to estimate the variance components. In contrast, there are only three replicate cohorts, so there is not much information in the data about the true standard deviation between cohorts.
+
+## Setting an informative prior on replicate effects
 
 A strength of Bayesian statistics is that it forces us to be explicit about our prior beliefs about the things we want to estimate.
 In the previous model, we didn't follow that philosophy - we didn't define any explicit prior expectations about the parametes, and just used the implicit default settings.
@@ -115,16 +112,29 @@ In this case, it means that the default priors are not appropriate here.
 That is actually quite a deep but subtle advantage of Bayesian models - when the model is poor, the model tends to warn you about that by failing, rather than letting you waste time later messing with poor results from a bad model.
 
 In this case, we already know that the true standard deviation between replicate cohorts is 0.2.
-To demonstrate that poor prior choice is what causes the divergent transitions, we can explicitly set a strong prior on the standard deviation between replicates that tells the model to look in the correct area of sampling space.
- 
+To demonstrate that poor prior choice is what causes the divergent transitions, we can explicitly set an informative prior on the standard deviation between replicates.
+This essentially tells the models that we have a prior belief that the standard deviation between replicates is fairly small, so it shouldn't waste time trying large values.
+To do this, we define a prior with `set_prior`.
+
 ```{r}
 # Define the prior for the standard deviation of the replicate group
 priors <- c(
-  set_prior("normal(0, 0.2)", class = "sd", group = "replicate")
+  set_prior(
+    "normal(0, 0.2)", class = "sd", group = "replicate")
 )
+```
+
+The command states that we think that we think the standard deviation of variable `replicate` is drawn from a normal distribution with mean zero and standard deviation of 0.2.
+
+Fit the model again, using this prior:
+
+```{r brms-prior-on-rep}
+#| results: 'hide'
+#| message: false
+#| warning: false
 
 # Fit the model with the defined prior
-brms_perfect prior <- brm(
+brms_prior_on_rep <- brm(
   normal_phenotype ~ (1 | replicate) + (1 | tray) + (1 | line), 
   data = exp_design,
   prior = priors
@@ -134,53 +144,94 @@ brms_perfect prior <- brm(
 The summary of the model shows that the standard deviation between replicates is now estimated accurately.
 Furthermore, the warning about divergent transitions has disappeared.
 
-```{r}
-summary(brms_perfect)
+```{r, eval=TRUE}
+summary(brms_prior_on_rep)
 ```
-This is of course a bit silly - usually we wouldn't know the correct answer.
-I just wanted to demonstrate that better priors can 'fix' a failing model.
+
+This is of course a bit silly - usually we wouldn't know the correct answer. I just wanted to demonstrate that better priors can 'fix' a failing model.
 
 ## Priors that are too strong
 
-Let's consider another 
+In the previous model we used an informative model to restrict the search space of possible standard deviations between replicates, and it gave a us a better answer.
+What happens if we set set a strong prior on the standard deviations between genotypes and trays as well?
+In this we know that such a prior is not appropriate because we know the real answers, so this exercise should gives us an idea of how sensitive the estimates are to badly specified priors.
+The following model sets similarly strong prior on the estimates of standard deviations, but applies this to all three variables, not just replicate.
 
-```{r}
-# Define the prior for the standard deviation of the replicate group
+```{r brms-global-priors}
+#| results: 'hide'
+#| warning: false
+#| message: false
+
+# Set a strong prior on all three standard deviation estimates
 priors <- c(
-  set_prior("normal(0, 0.2)", class = "sd")
+  set_prior("normal(0, 0.1)", class = "sd")
 )
 
 # Fit the model with the defined prior
-brms_wrong_priors <- brm(
-  normal_phenotype ~ (1 | replicate) + (1 | tray) + (1 | line), 
+brms_global_priors <- brm(
+  normal_phenotype ~ (1 | replicate) + (1 | tray) + (1 | line),
   data = exp_design,
   prior = priors
 )
 ```
- 
+
+You can view the output with
+
+```{r, eval=TRUE}
+summary(brms_global_priors)
+```
+
+You can see that all three estimates have been shrunk towards zero, at least a little.
+This makes sense - the prior was telling the model that standard deviations should be small.
+In particular, the standard deviation between lines has shrunk to 0.4, which is an underestimate of the true value.
+However, it is interesting that the estimate is still much greater than you would expect from the prior alone, and still fairly close to the true value.
+This is because there are many lines in this experiment, so there is plenty of data to estimate the standard deviation well.
+Thus, in this case, the data overwhelms the prior.
+
 ## Picking priors in real life
 
+From the previous examples it is clear that using default priors was a bad idea, and that we got much better answers when we pick good priors.
+However, the choices of priors were informed by information about the true parameter values, which we know exactly for these simulated data.
+Of course, this is usually not the case, so for this to be useful we need a practical way to actually pick meaningful priors.
+
+Normally I would advocate that people invest time in prior simulations to achieve this.
+Simulating data is an enormously useful exercise in any analysis, not just for setting up Bayesian models.
+For more information on the topic I suggest:
+
+* [Wesner & Pomeranz](https://doi.org/10.1002/ecs2.3739) illustrate why ignoring priors can give you absurd model estimates, such as predators being able to eat the moon.
+* Richard McElreath's book "Rethinking statistics" gives a deeper understanding of how and why simulations are a good idea.
+* [Gabry and colleagues](https://doi.org/10.1111/rssa.12378) describe how to interpet prior simulations as part of a broader workflow.
+
+In the interests of length, I will skip proper prior simulations here.
+Instead, to get a very quick idea of what might represent sensible priors we can first estimate the arithemetic means of the standard deviations, without fitting a model.
+
 ```{r}
 
-exp_design %>% 
-  group_by(line) %>% 
-  summarise(z = mean(normal_phenotype)) %>% 
-  pull(z) %>% 
+exp_design %>%
+  group_by(line) %>%
+  summarise(z = mean(normal_phenotype)) %>%
+  pull(z) %>%
   sd()
 
-exp_design %>% 
-  group_by(replicate) %>% 
-  summarise(z = mean(normal_phenotype)) %>% 
-  pull(z) %>% 
+exp_design %>%
+  group_by(replicate) %>%
+  summarise(z = mean(normal_phenotype)) %>%
+  pull(z) %>%
   sd()
 
-exp_design %>% 
-  group_by(tray) %>% 
-  summarise(z = mean(normal_phenotype)) %>% 
-  pull(z) %>% 
+exp_design %>%
+  group_by(tray) %>%
+  summarise(z = mean(normal_phenotype)) %>%
+  pull(z) %>%
   sd()
 ```
+
+We can take those values and plug them in as 'best guesses' on priors.
+
 ```{r}
+#| results: 'hide'
+#| message: false
+#| warning: false
 # Define the prior for the standard deviation of the replicate group
 priors <- c(
   set_prior("normal(0, 0.75)", class = "sd", group = "line"),
@@ -190,9 +241,72 @@ priors <- c(
 
 # Fit the model with the defined prior
 brms_best_guess <- brm(
-  normal_phenotype ~ (1 | replicate) + (1 | tray) + (1 | line), 
+  normal_phenotype ~ (1 | replicate) + (1 | tray) + (1 | line),
   data = exp_design,
   prior = priors
 )
+```
+
+The results are pretty close to the real values!
+
+```{r}
+summary(brms_best_guess)
+```
+
+In this case using raw estimates worked.
+However, it is worth noting that the data are for a designed experiment, where the variables should be largely orthogonal to one another.
+If two or more variables were correlated with one another it is not clear that this would work quiet so well.
+
+# Calculating a heritability
+
+So far we have only estimated standard deviations.
+We really want estimates of broad-sense heritability, which is the proportion of overall phenotypic variance between individuals explained by differences between lines.
+Our models give us posterior samples of values for the variance components, so we want to calculate heritability over the whole posterior sample.
+Below is a function to pull out the estimates and calculate heritability.
+Again, this only looks at the posterior mean, so we are throwing information away, but this is enough for now.
+
+```{r}
+
+brms_heritability <- function(brm_model){
+  # Extract posterior draws as a data frame
+  draws <- as_draws_df(brm_model)
+  
+  # Compute variance components for each posterior draw
+  draws$var_line      <- draws$sd_line__Intercept^2
+  draws$var_tray      <- draws$sd_tray__Intercept^2
+  draws$var_replicate <- draws$sd_replicate__Intercept^2
+  draws$var_resid     <- draws$sigma^2
+  
+  # Total variance for each draw
+  draws$total_var <- with(draws, var_line + var_tray + var_replicate + var_resid)
+  
+  # Proportion of variance explained by line
+  draws$prop_var_line <- draws$var_line / draws$total_var
+  
+  # Summarize posterior distribution
+  mean(draws$prop_var_line)
+}
+
+```
+
+Most of these models give us estimates of about 0.16.
+Reassuringly, that's very close to what `lme4` told us.
+For example, here is the estimate from the last model, with very reasonable priors.
+
+```{r}
+brms_heritability(brms_best_guess)
+```
+
+Even using the default priors, which we know overestimate the variance between replicates, gives a fairly similar answer.
+That indicates that the overestimate of replicate effects was at the expense of residual effects, leaving the genetic effects unchanged.
+
+```{r}
+brms_heritability(brms_defaults)
+```
+
+In contrast, using restrictive priors that shrink all the variance components underestimates heritability, because the between-line variance is underestimated.
+
+```{r}
+brms_heritability(brms_global_priors)
 ```
 
